@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>ResultPro — Developer Panel</title>
+<style>
+  :root {
+    --navy: #58CC02; --navy-light: #46A302; --gold: #FFC800; --cream: #F7F7F7;
+    --card: #FFFFFF; --border: #E5E5E5; --text: #3C3C3C; --text-soft: #777777;
+    --pass: #58A700; --pass-bg: #D7FFB8; --fail: #EA2B2B; --fail-bg: #FFDFE0;
+    --warn: #CE8E00; --warn-bg: #FFF4D1;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: 'Nunito', Arial, sans-serif; background: var(--cream); color: var(--text); min-height:100vh; padding:24px 16px 60px; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .wrap.narrow { max-width: 420px; }
+  .header { text-align:center; margin-bottom:22px; }
+  .header .crest { width:44px; height:44px; background:var(--navy); color:var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:16px; margin:0 auto 10px; }
+  .header h1 { font-size:20px; margin:0; font-weight:800; font-family: "Baloo 2", sans-serif; }
+  .header p { font-size:12px; color:var(--text-soft); margin:4px 0 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:20px; margin-bottom:18px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; font-size:13px; }
+  .topbar .who { color:var(--text-soft); }
+  .topbar button { background:none; border:none; color:var(--navy); font-weight:bold; cursor:pointer; font-size:13px; }
+  label { font-size:11px; color:var(--text-soft); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.3px; }
+  input, select { width:100%; padding:9px 10px; font-size:13px; border:1px solid var(--border); border-radius:4px; background:var(--cream); color:var(--text); font-family:inherit; }
+  input:focus, select:focus { outline:2px solid var(--navy); outline-offset:1px; }
+  .add-form { display:grid; grid-template-columns: 1fr 1fr auto; gap:8px; align-items:end; margin-bottom:14px; }
+  @media (max-width:600px) { .add-form { grid-template-columns: 1fr; } }
+  button.primary { padding:10px 16px; font-size:13px; font-weight:700; font-family:'Baloo 2', sans-serif; text-transform:uppercase; letter-spacing:0.3px; border:none; border-radius:12px; background:var(--navy); color:#fff; cursor:pointer; white-space:nowrap; box-shadow: 0 4px 0 var(--navy-light); transition: transform 0.05s, box-shadow 0.05s; }
+  button.primary:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--navy-light); }
+  button.primary:hover { filter: brightness(1.05); }
+  button.primary:hover { background: var(--navy-light); }
+  .error-msg { font-size:13px; color:var(--fail); background:var(--fail-bg); border-radius:4px; padding:10px 12px; margin-bottom:14px; display:none; }
+  .list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .list-row:last-child { border-bottom:none; }
+  .list-row .meta { color:var(--text-soft); font-size:12px; }
+  .status-pill { display:inline-block; padding:2px 8px; border-radius:3px; font-weight:bold; font-size:11px; }
+  .status-unused { background:var(--warn-bg); color:var(--warn); }
+  .status-active { background:var(--pass-bg); color:var(--pass); }
+  .status-exhausted { background:var(--fail-bg); color:var(--fail); }
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--navy); color:#fff; padding:12px 20px; border-radius:18px; font-size:13px; display:none; max-width:90%; }
+  .empty-note { text-align:center; color:var(--text-soft); font-size:13px; padding:16px 0; }
+  .section-title { font-size:14px; font-weight:bold; margin:0 0 14px; }
+  .code-list { font-family: monospace; font-size:13px; background:var(--cream); border-radius:4px; padding:12px; max-height:220px; overflow-y:auto; white-space:pre-line; margin-bottom:10px; }
+  .tabs { display:flex; gap:4px; margin-bottom:18px; background:var(--cream); border-radius:18px; padding:4px; }
+  .tabs button { flex:1; padding:8px 6px; border:none; border-radius:4px; background:transparent; color:var(--text-soft); font-size:12px; font-weight:bold; cursor:pointer; }
+  .tabs button.active { background:var(--navy); color:#fff; }
+  .pager { display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:12px; color:var(--text-soft); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="wrap narrow" id="loginWrap">
+  <div class="header">
+    <div class="crest">RP</div>
+    <h1>ResultPro</h1>
+    <p>Developer panel</p>
+  </div>
+  <div class="card">
+    <div class="error-msg" id="loginError"></div>
+    <label for="devEmail">Email</label>
+    <input type="email" id="devEmail" />
+    <label for="devPassword" style="margin-top:12px;">Password</label>
+    <div style="position:relative; margin-bottom:16px;">
+      <input type="password" id="devPassword" style="padding-right:64px;" />
+      <button type="button" onclick="togglePasswordVisibility('devPassword', this)" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:auto; padding:4px 10px; font-size:10px; background:var(--cream); color:var(--navy); box-shadow:none; border:1px solid var(--border); border-radius:8px; text-transform:none; font-family:'Nunito',Arial,sans-serif; font-weight:700;">Show</button>
+    </div>
+    <button class="primary" style="width:100%;" onclick="login()">Log in</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="wrap" id="appWrap" style="display:none;">
+  <div class="header">
+    <div class="crest">RP</div>
+    <h1>ResultPro</h1>
+    <p>Developer panel — PIN generation</p>
+  </div>
+
+  <div class="card">
+    <div class="topbar">
+      <span class="who" id="whoAmI"></span>
+      <button onclick="logout()">Log out</button>
+    </div>
+
+    <div class="tabs">
+      <button class="active" onclick="switchTab('generate')">Generate PINs</button>
+      <button onclick="switchTab('view')">All PINs</button>
+    </div>
+
+    <!-- GENERATE -->
+    <div id="tab-generate">
+      <p class="section-title">Generate a new batch</p>
+      <div class="add-form">
+        <div><label>How many PINs</label><input type="number" id="genCount" value="50" min="1" max="1000" /></div>
+        <div><label>Max uses per PIN</label><input type="number" id="genMaxUses" value="5" min="1" max="20" /></div>
+        <button class="primary" onclick="generatePins()">Generate</button>
+      </div>
+      <div id="generatedResult"></div>
+    </div>
+
+    <!-- VIEW -->
+    <div id="tab-view" style="display:none;">
+      <p class="section-title">All PINs</p>
+      <div class="add-form">
+        <div><label>Search</label><input type="text" id="pinSearch" placeholder="PIN code or admission no." oninput="debouncedPinSearch()" /></div>
+        <div><label>Status</label>
+          <select id="pinStatusFilter" onchange="searchPins()">
+            <option value="">All</option>
+            <option value="unused">Unused</option>
+            <option value="active">Active (in use)</option>
+            <option value="exhausted">Exhausted</option>
+          </select>
+        </div>
+        <div></div>
+      </div>
+      <div id="pinsList"></div>
+      <div class="pager" id="pinsPager"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API_BASE = window.location.origin.includes('4000') ? window.location.origin : 'http://localhost:4000';
+  let admin = null;
+
+  const saved = sessionStorage.getItem('resultpro_developer');
+  if (saved) {
+    admin = JSON.parse(saved);
+    boot();
+  }
+
+  function showToast(message) {
+    const t = document.getElementById('toast');
+    t.textContent = message;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 3000);
+  }
+
+  function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === "password") { input.type = "text"; btn.textContent = "Hide"; }
+    else { input.type = "password"; btn.textContent = "Show"; }
+  }
+
+  async function login() {
+    const email = document.getElementById('devEmail').value.trim();
+    const password = document.getElementById('devPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+    if (!email || !password) {
+      errEl.textContent = 'Please enter both email and password.';
+      errEl.style.display = 'block';
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/developer/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+      admin = data.admin;
+      sessionStorage.setItem('resultpro_developer', JSON.stringify(admin));
+      boot();
+    } catch (err) {
+      errEl.textContent = err.message || 'Login failed.';
+      errEl.style.display = 'block';
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem('resultpro_developer');
+    admin = null;
+    document.getElementById('appWrap').style.display = 'none';
+    document.getElementById('loginWrap').style.display = 'block';
+  }
+
+  function boot() {
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'block';
+    document.getElementById('whoAmI').textContent = `Logged in as ${admin.name}`;
+  }
+
+  function switchTab(tab) {
+    document.getElementById('tab-generate').style.display = tab === 'generate' ? 'block' : 'none';
+    document.getElementById('tab-view').style.display = tab === 'view' ? 'block' : 'none';
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    if (tab === 'view') searchPins();
+  }
+
+  /* ---------------- GENERATE ---------------- */
+  async function generatePins() {
+    const count = document.getElementById('genCount').value;
+    const max_uses = document.getElementById('genMaxUses').value;
+    try {
+      const res = await fetch(`${API_BASE}/api/developer/pins/generate`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count, max_uses, generated_by: admin.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const codes = data.pins.map(p => p.code).join('\n');
+      document.getElementById('generatedResult').innerHTML = `
+        <p style="font-size:12px; color:var(--text-soft); margin:0 0 8px;">${data.pins.length} PINs generated — copy this list to hand over to the exam office:</p>
+        <div class="code-list">${codes}</div>
+        <button class="primary" onclick="copyGenerated()">Copy all codes</button>
+      `;
+      window._lastGeneratedCodes = codes;
+      showToast(`${data.pins.length} PINs generated.`);
+    } catch (err) {
+      showToast(err.message || 'Could not generate PINs.');
+    }
+  }
+
+  function copyGenerated() {
+    if (!window._lastGeneratedCodes) return;
+    navigator.clipboard.writeText(window._lastGeneratedCodes)
+      .then(() => showToast('Copied to clipboard.'))
+      .catch(() => showToast('Could not copy — select and copy manually.'));
+  }
+
+  /* ---------------- VIEW / SEARCH ---------------- */
+  let pinPage = 1;
+  const PINS_PER_PAGE = 25;
+  let pinSearchDebounceTimer;
+
+  function debouncedPinSearch() {
+    clearTimeout(pinSearchDebounceTimer);
+    pinSearchDebounceTimer = setTimeout(searchPins, 350);
+  }
+
+  function goToPinPage(delta) {
+    pinPage = Math.max(1, pinPage + delta);
+    searchPins();
+  }
+
+  function pinStatus(p) {
+    if (p.uses_count >= p.max_uses) return { label: 'Exhausted', cls: 'status-exhausted' };
+    if (!p.student_admission_no) return { label: 'Unused', cls: 'status-unused' };
+    return { label: 'Active', cls: 'status-active' };
+  }
+
+  async function searchPins() {
+    const search = document.getElementById('pinSearch').value.trim();
+    const status = document.getElementById('pinStatusFilter').value;
+
+    const params = new URLSearchParams({ page: pinPage, pageSize: PINS_PER_PAGE });
+    if (search) params.set('search', search);
+    if (status) params.set('status', status);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/developer/pins?${params.toString()}`);
+      const data = await res.json();
+      const pins = data.pins || [];
+
+      const list = document.getElementById('pinsList');
+      list.innerHTML = pins.length
+        ? pins.map(p => {
+            const s = pinStatus(p);
+            const who = p.student_admission_no ? `${p.student_name} (${p.student_admission_no})` : 'Not yet used';
+            return `
+              <div class="list-row">
+                <span style="font-family:monospace;">${p.code} <span class="meta">— ${who} — ${p.uses_count}/${p.max_uses} uses</span></span>
+                <span class="status-pill ${s.cls}">${s.label}</span>
+              </div>`;
+          }).join('')
+        : `<p class="empty-note">No PINs found.</p>`;
+
+      const totalPages = Math.max(1, Math.ceil((data.total || 0) / PINS_PER_PAGE));
+      document.getElementById('pinsPager').innerHTML = `
+        <span>${data.total || 0} PIN${data.total === 1 ? '' : 's'} total &middot; page ${pinPage} of ${totalPages}</span>
+        <span>
+          <button class="primary" style="padding:5px 10px; margin-right:6px;" onclick="goToPinPage(-1)" ${pinPage <= 1 ? 'disabled' : ''}>Prev</button>
+          <button class="primary" style="padding:5px 10px;" onclick="goToPinPage(1)" ${pinPage >= totalPages ? 'disabled' : ''}>Next</button>
+        </span>`;
+    } catch (err) {
+      showToast('Could not load PINs.');
+    }
+  }
+</script>
+</body>
+</html>

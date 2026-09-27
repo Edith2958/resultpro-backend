@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>Greenfield Secondary School — Check Your Result</title>
+<style>
+  :root {
+    --navy: #58CC02;
+    --navy-light: #46A302;
+    --gold: #FFC800;
+    --cream: #F7F7F7;
+    --card: #FFFFFF;
+    --border: #E5E5E5;
+    --text: #3C3C3C;
+    --text-soft: #777777;
+    --pass: #58A700;
+    --pass-bg: #D7FFB8;
+    --fail: #EA2B2B;
+    --fail-bg: #FFDFE0;
+    --warn: #CE8E00;
+    --warn-bg: #FFF4D1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'Nunito', Arial, sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  .wrap { width: 100%; max-width: 480px; }
+
+  .school-header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .school-header .crest {
+    width: 48px; height: 48px;
+    background: var(--navy);
+    color: var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 18px;
+    margin: 0 auto 12px;
+    font-family: 'Nunito', Arial, sans-serif;
+  }
+
+  .school-header h1 {
+    font-size: 22px;
+    margin: 0;
+    font-weight: 800;
+    font-family: 'Baloo 2', sans-serif;
+    letter-spacing: 0.3px;
+  }
+
+  .school-header p {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text-soft);
+    margin: 4px 0 0;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px 24px;
+    margin-bottom: 20px;
+  }
+
+  .card h2 {
+    font-size: 16px;
+    font-weight: normal;
+    margin: 0 0 18px;
+    font-family: Arial, sans-serif;
+  }
+
+  label {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: var(--text-soft);
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 14px;
+    background: var(--cream);
+    color: var(--text);
+  }
+
+  input:focus, select:focus {
+    outline: 2px solid var(--navy);
+    outline-offset: 1px;
+  }
+
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 14px;
+    background: var(--navy);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 0 var(--navy-light);
+    transition: transform 0.05s, box-shadow 0.05s;
+  }
+
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--navy-light); }
+  button:hover { filter: brightness(1.05); }
+  button:disabled { background: #CCCCCC; box-shadow: 0 4px 0 #AAAAAA; cursor: not-allowed; }
+
+  button.secondary {
+    background: transparent;
+    color: var(--navy);
+    border: 2px solid var(--navy);
+    box-shadow: none;
+    margin-top: 10px;
+  }
+  button.secondary:active { transform: none; }
+
+  .error-msg {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--fail);
+    background: var(--fail-bg);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  #resultView { display: none; }
+
+  .student-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .student-line .name {
+    font-size: 15px;
+    margin: 0;
+  }
+
+  .student-line .meta {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: var(--text-soft);
+    margin: 2px 0 0;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .stat-box {
+    background: var(--cream);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+
+  .stat-box .label {
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    color: var(--text-soft);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .stat-box .value {
+    font-size: 16px;
+    margin: 3px 0 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    margin-bottom: 18px;
+  }
+
+  th {
+    text-align: left;
+    color: var(--text-soft);
+    font-weight: normal;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th.num, td.num { text-align: right; }
+
+  td {
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .grade-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 11px;
+  }
+
+  .grade-A, .grade-B { background: var(--pass-bg); color: var(--pass); }
+  .grade-C, .grade-D, .grade-E { background: #FFF4D1; color: #CE8E00; }
+  .grade-F { background: var(--fail-bg); color: var(--fail); }
+
+  .comments-block {
+    font-family: Arial, sans-serif;
+  }
+
+  .comments-block .comment-label {
+    font-size: 11px;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: 0 0 4px;
+  }
+
+  .comments-block p.comment-text {
+    font-size: 13px;
+    margin: 0 0 14px;
+    font-family: 'Nunito', Arial, sans-serif;
+  }
+
+  .loading, .empty-state {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text-soft);
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .wrap { max-width: 100%; }
+    #loginView, #loadingView, #emptyState, button { display: none !important; }
+    .card { border: none; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="school-header">
+    <div class="crest">GS</div>
+    <h1>Greenfield Secondary School</h1>
+    <p>Student result portal</p>
+  </div>
+
+  <!-- LOGIN VIEW -->
+  <div class="card" id="loginView">
+    <h2>Check your result</h2>
+
+    <div class="error-msg" id="loginError"></div>
+
+    <label for="admissionNo">Admission number</label>
+    <input type="text" id="admissionNo" placeholder="e.g. 245" />
+
+    <label for="surname">Surname</label>
+    <input type="text" id="surname" placeholder="e.g. Johnson" />
+
+    <label for="resultType">Which result</label>
+    <select id="resultType" style="margin-bottom:14px;" onchange="togglePinField()">
+      <option value="fullterm">Full term result</option>
+      <option value="midterm">Mid-term result</option>
+    </select>
+
+    <div id="pinFieldWrap">
+      <label for="pinCode">Result PIN</label>
+      <input type="text" id="pinCode" placeholder="e.g. 482-193-627" style="margin-bottom:14px;" />
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="termSelect">Term</label>
+        <select id="termSelect" onchange="checkReleaseCountdown()">
+          <option>First Term</option>
+          <option>Second Term</option>
+          <option>Third Term</option>
+        </select>
+      </div>
+      <div>
+        <label for="sessionInput">Session</label>
+        <input type="text" id="sessionInput" placeholder="2025/2026" value="2025/2026" onchange="checkReleaseCountdown()" oninput="checkReleaseCountdown()" />
+      </div>
+    </div>
+
+    <p id="releaseCountdown" style="font-family:'Nunito',Arial,sans-serif; font-size:12px; color:var(--warn); margin:0 0 14px; display:none; font-weight:700;"></p>
+
+    <button id="loginBtn" onclick="checkResult()">View result</button>
+  </div>
+
+  <!-- LOADING -->
+  <div class="card" id="loadingView" style="display:none;">
+    <p class="loading">Fetching result…</p>
+  </div>
+
+  <!-- RESULT VIEW -->
+  <div class="card" id="resultView">
+    <div class="student-line">
+      <div class="avatar" id="studentAvatar">--</div>
+      <div>
+        <p class="name" id="studentName">—</p>
+        <p class="meta" id="studentMeta">—</p>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-box">
+        <p class="label" id="statTotalLabel">Total score</p>
+        <p class="value" id="statTotal">—</p>
+      </div>
+      <div class="stat-box">
+        <p class="label" id="statAverageLabel">Average</p>
+        <p class="value" id="statAverage">—</p>
+      </div>
+      <div class="stat-box">
+        <p class="label" id="statPositionLabel">Class position</p>
+        <p class="value" id="statPosition">—</p>
+      </div>
+      <div class="stat-box">
+        <p class="label" id="statAttendanceLabel">Attendance</p>
+        <p class="value" id="statAttendance">—</p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th class="num">CA</th>
+          <th class="num">Exam</th>
+          <th class="num">Total</th>
+          <th class="num">Highest</th>
+          <th class="num">Pos</th>
+          <th class="num">Grade</th>
+        </tr>
+      </thead>
+      <tbody id="subjectsBody"></tbody>
+    </table>
+
+    <div class="comments-block" id="commentsBlock"></div>
+
+    <div style="display:flex; gap:8px;">
+      <button class="secondary" onclick="window.print()" style="flex:1;">Print / Save as PDF</button>
+      <button class="secondary" onclick="backToLogin()" style="flex:1;">Check another result</button>
+    </div>
+  </div>
+
+  <div class="empty-state" id="emptyState" style="display:none;">
+    No result found for that term and session yet.
+  </div>
+
+</div>
+
+<script>
+  // Change this if your backend runs somewhere other than localhost:4000
+  const API_BASE = window.location.origin.includes('4000') ? window.location.origin : 'http://localhost:4000';
+  let releaseCountdownInterval; // declared early — togglePinField() below runs immediately on page load and needs this ready
+
+  function getInitials(name) {
+    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  function togglePinField() {
+    const isFullTerm = document.getElementById('resultType').value === 'fullterm';
+    document.getElementById('pinFieldWrap').style.display = isFullTerm ? 'block' : 'none';
+    checkReleaseCountdown();
+  }
+  togglePinField(); // set correct initial state on page load
+
+  async function checkReleaseCountdown() {
+    clearInterval(releaseCountdownInterval);
+    const el = document.getElementById('releaseCountdown');
+    const isFullTerm = document.getElementById('resultType').value === 'fullterm';
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
+
+    if (!isFullTerm || !session) {
+      el.style.display = 'none';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/term-settings?term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}`);
+      const data = await res.json();
+      const releaseAt = data.settings?.result_release_at;
+
+      if (!releaseAt || new Date(releaseAt) <= new Date()) {
+        el.style.display = 'none';
+        return;
+      }
+
+      const releaseDate = new Date(releaseAt);
+      el.style.display = 'block';
+
+      function tick() {
+        const diff = releaseDate - new Date();
+        if (diff <= 0) {
+          el.textContent = `🎉 Results are now available!`;
+          clearInterval(releaseCountdownInterval);
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const mins = Math.floor((diff / (1000 * 60)) % 60);
+        const secs = Math.floor((diff / 1000) % 60);
+        el.textContent = `⏳ Results open in ${days}d ${hours}h ${mins}m ${secs}s`;
+      }
+      tick();
+      releaseCountdownInterval = setInterval(tick, 1000);
+    } catch (err) {
+      el.style.display = 'none';
+    }
+  }
+
+  function showError(message) {
+    const el = document.getElementById('loginError');
+    el.textContent = message;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('loginError').style.display = 'none';
+  }
+
+  async function checkResult() {
+    hideError();
+    const admissionNo = document.getElementById('admissionNo').value.trim();
+    const surname = document.getElementById('surname').value.trim();
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
+    const resultType = document.getElementById('resultType').value; // 'fullterm' | 'midterm'
+    const pinCode = document.getElementById('pinCode').value.trim();
+
+    if (!admissionNo || !surname || !session) {
+      showError('Please fill in admission number, surname and session.');
+      return;
+    }
+    if (resultType === 'fullterm' && !pinCode) {
+      showError('Please enter your result PIN to view the full-term result.');
+      return;
+    }
+
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('loadingView').style.display = 'block';
+
+    try {
+      // Step 1: log in / verify student
+      const loginRes = await fetch(`${API_BASE}/api/student/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admission_no: admissionNo, surname }),
+      });
+      const loginData = await loginRes.json();
+
+      if (!loginRes.ok) {
+        throw new Error(loginData.error || 'Could not find that student.');
+      }
+
+      const student = loginData.student;
+
+      // Step 2: fetch the result — full term or mid-term, depending on what was picked
+      const endpoint = resultType === 'midterm' ? 'midterm-result' : 'result';
+      const pinParam = resultType === 'fullterm' ? `&pin_code=${encodeURIComponent(pinCode)}` : '';
+      const resultRes = await fetch(
+        `${API_BASE}/api/student/${endpoint}?student_id=${student.id}&term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}${pinParam}`
+      );
+      const resultData = await resultRes.json();
+
+      document.getElementById('loadingView').style.display = 'none';
+
+      // Results haven't been released yet — show the release date instead of a generic empty state
+      if (resultRes.status === 403 && resultData.result_release_at) {
+        const releaseDate = new Date(resultData.result_release_at);
+        showError(`Results aren't released yet. They'll be available from ${releaseDate.toLocaleString()}.`);
+        document.getElementById('loginView').style.display = 'block';
+        return;
+      }
+
+      // Fee hold — different message, points the student to the accounts office
+      if (resultRes.status === 403 && resultData.fee_hold) {
+        showError(resultData.error);
+        document.getElementById('loginView').style.display = 'block';
+        return;
+      }
+
+      // Any other blocked check (invalid PIN, PIN belongs to someone else, PIN exhausted,
+      // no PIN supplied) — show the specific message from the server instead of a generic one.
+      if (resultRes.status === 403 && resultData.error) {
+        showError(resultData.error);
+        document.getElementById('loginView').style.display = 'block';
+        return;
+      }
+
+      if (!resultRes.ok || !resultData.subjects || resultData.subjects.length === 0) {
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('loginView').style.display = 'block';
+        return;
+      }
+
+      if (resultType === 'midterm') {
+        renderMidTermResult(resultData);
+      } else {
+        renderResult(resultData);
+      }
+    } catch (err) {
+      document.getElementById('loadingView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'block';
+      showError(err.message || 'Something went wrong. Please try again.');
+    }
+  }
+
+  function renderResult(data) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultView').style.display = 'block';
+
+    const avatarEl = document.getElementById('studentAvatar');
+    if (data.student.photo_url) {
+      avatarEl.innerHTML = `<img src="${API_BASE}${data.student.photo_url}" alt="${data.student.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+    } else {
+      avatarEl.textContent = getInitials(data.student.name);
+    }
+    document.getElementById('studentName').textContent = data.student.name;
+    document.getElementById('studentMeta').textContent =
+      `${data.student.class} · Admission no. ${data.student.admission_no} · ${data.term}, ${data.session}`;
+
+    document.getElementById('statTotalLabel').textContent = 'Total score';
+    document.getElementById('statAverageLabel').textContent = 'Average';
+    document.getElementById('statPositionLabel').textContent = 'Class position';
+    document.getElementById('statAttendanceLabel').textContent = 'Attendance';
+    document.getElementById('statTotal').textContent = `${data.summary.total_score} / ${data.summary.max_obtainable}`;
+    document.getElementById('statAverage').textContent = `${data.summary.average}%`;
+    document.getElementById('statPosition').textContent = `${data.summary.class_position} of ${data.summary.class_size}`;
+    document.getElementById('statAttendance').textContent = data.attendance
+      ? `${data.attendance.present} / ${data.attendance.total_days}`
+      : 'Not recorded';
+
+    const tbody = document.getElementById('subjectsBody');
+    tbody.innerHTML = '';
+    data.subjects.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.subject_name}</td>
+        <td class="num">${s.ca}</td>
+        <td class="num">${s.exam}</td>
+        <td class="num"><strong>${s.total}</strong></td>
+        <td class="num">${s.highest ?? '—'}</td>
+        <td class="num">${s.position ?? '—'}</td>
+        <td class="num"><span class="grade-pill grade-${s.grade}">${s.grade || '—'}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const commentsBlock = document.getElementById('commentsBlock');
+    if (data.comments && (data.comments.form_teacher || data.comments.principal)) {
+      commentsBlock.innerHTML = `
+        ${data.comments.form_teacher ? `
+          <p class="comment-label">Form teacher's comment</p>
+          <p class="comment-text">${data.comments.form_teacher}</p>` : ''}
+        ${data.comments.principal ? `
+          <p class="comment-label">Principal's comment</p>
+          <p class="comment-text">${data.comments.principal}</p>` : ''}
+      `;
+    } else {
+      commentsBlock.innerHTML = '';
+    }
+  }
+
+  function renderMidTermResult(data) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultView').style.display = 'block';
+
+    const avatarEl = document.getElementById('studentAvatar');
+    if (data.student.photo_url) {
+      avatarEl.innerHTML = `<img src="${API_BASE}${data.student.photo_url}" alt="${data.student.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+    } else {
+      avatarEl.textContent = getInitials(data.student.name);
+    }
+    document.getElementById('studentName').textContent = data.student.name;
+    document.getElementById('studentMeta').textContent =
+      `${data.student.class} · Admission no. ${data.student.admission_no} · ${data.term}, ${data.session} (Mid-term)`;
+
+    // Mid-term has no class position/attendance/average — relabel and show a pass/fail count instead
+    document.getElementById('statTotalLabel').textContent = 'Passed';
+    document.getElementById('statAverageLabel').textContent = 'Average';
+    document.getElementById('statPositionLabel').textContent = 'Class position';
+    document.getElementById('statAttendanceLabel').textContent = 'Attendance';
+    const passed = data.subjects.filter(s => s.remark === 'Pass').length;
+    document.getElementById('statTotal').textContent = `${passed} / ${data.subjects.length} passed`;
+    document.getElementById('statAverage').textContent = '—';
+    document.getElementById('statPosition').textContent = '—';
+    document.getElementById('statAttendance').textContent = '—';
+
+    const tbody = document.getElementById('subjectsBody');
+    tbody.innerHTML = '';
+    // Swap the table header for mid-term's simpler columns
+    document.querySelector('#resultView thead').innerHTML = `
+      <tr>
+        <th>Subject</th>
+        <th class="num">Assignment</th>
+        <th class="num">Test</th>
+        <th class="num">Total</th>
+        <th class="num">Remark</th>
+      </tr>`;
+
+    data.subjects.forEach(s => {
+      const tr = document.createElement('tr');
+      const remarkClass = s.remark === 'Pass' ? 'grade-A' : s.remark === 'Fail' ? 'grade-F' : '';
+      tr.innerHTML = `
+        <td>${s.subject_name}</td>
+        <td class="num">${s.assignment ?? '—'}</td>
+        <td class="num">${s.test ?? '—'}</td>
+        <td class="num"><strong>${s.total ?? '—'}</strong></td>
+        <td class="num"><span class="grade-pill ${remarkClass}">${s.remark || '—'}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('commentsBlock').innerHTML = '';
+  }
+
+  function backToLogin() {
+    document.getElementById('resultView').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('loginView').style.display = 'block';
+  }
+</script>
+</body>
+</html>

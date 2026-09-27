@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>Greenfield Secondary School — Form Teacher</title>
+<style>
+  :root {
+    --navy: #58CC02;
+    --navy-light: #46A302;
+    --gold: #FFC800;
+    --cream: #F7F7F7;
+    --card: #FFFFFF;
+    --border: #E5E5E5;
+    --text: #3C3C3C;
+    --text-soft: #777777;
+    --pass: #58A700;
+    --pass-bg: #D7FFB8;
+    --fail: #EA2B2B;
+    --fail-bg: #FFDFE0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Nunito', Arial, sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 800px; margin: 0 auto; }
+  .wrap.narrow { max-width: 420px; }
+
+  .school-header { text-align: center; margin-bottom: 22px; }
+  .school-header .crest {
+    width: 44px; height: 44px;
+    background: var(--navy); color: var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 16px;
+    margin: 0 auto 10px;
+  }
+  .school-header h1 { font-size: 20px; margin: 0; font-weight: 800; font-family: "Baloo 2", sans-serif; }
+  .school-header p { font-size: 12px; color: var(--text-soft); margin: 4px 0 0; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    font-size: 13px;
+  }
+  .topbar .who { color: var(--text-soft); }
+  .topbar button {
+    background: none;
+    border: none;
+    color: var(--navy);
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  label {
+    font-size: 11px;
+    color: var(--text-soft);
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 9px 10px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--cream);
+    color: var(--text);
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--navy); outline-offset: 1px; }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  button.primary {
+    padding: 11px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Baloo 2', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border: none;
+    border-radius: 12px;
+    background: var(--navy);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 0 var(--navy-light);
+    transition: transform 0.05s, box-shadow 0.05s;
+  }
+  button.primary:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--navy-light); }
+  button.primary:hover { filter: brightness(1.05); }
+  button.ghost {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: bold;
+    border: 1px solid var(--navy);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--navy);
+    cursor: pointer;
+  }
+  button.small {
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: bold;
+    border: 1px solid var(--navy);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--navy);
+    cursor: pointer;
+  }
+
+  .error-msg {
+    font-size: 13px;
+    color: var(--fail);
+    background: var(--fail-bg);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  .load-btn-row { margin-top: 12px; }
+
+  .student-row {
+    display: flex;
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .student-row:last-child { border-bottom: none; }
+
+  .avatar-wrap { position: relative; flex-shrink: 0; }
+  .avatar {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 16px;
+    overflow: hidden;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+  .photo-input { display: none; }
+  .photo-btn {
+    display: block;
+    margin-top: 6px;
+    text-align: center;
+    font-size: 10px;
+  }
+
+  .student-fields { flex: 1; }
+  .student-fields .name { font-weight: bold; font-size: 14px; margin: 0 0 8px; }
+
+  .attendance-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .attendance-row > div { flex: 1; }
+  .attendance-row label { margin-bottom: 2px; }
+  .attendance-row input { padding: 6px 8px; font-size: 12px; }
+
+  textarea { min-height: 44px; resize: vertical; font-size: 12px; margin-bottom: 6px; }
+
+  .save-row { margin-top: 18px; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--navy);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 18px;
+    font-size: 13px;
+    display: none;
+  }
+
+  .empty-note {
+    text-align: center;
+    color: var(--text-soft);
+    font-size: 13px;
+    padding: 30px 0;
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    #loginWrap, .topbar, .filters, .load-btn-row, #rosterCard, #emptyNote { display: none !important; }
+    #broadsheetCard, #allSlipsCard { border: none; padding: 0; }
+    #broadsheetCard .topbar, #allSlipsCard .topbar { display: none !important; }
+    .result-slip-page { page-break-after: always; border: none !important; padding: 0 !important; margin-bottom: 0 !important; }
+    .result-slip-page:last-child { page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="wrap narrow" id="loginWrap">
+  <div class="school-header">
+    <div class="crest">GS</div>
+    <h1>Greenfield Secondary School</h1>
+    <p>Form teacher login</p>
+  </div>
+  <div class="card">
+    <div class="error-msg" id="loginError"></div>
+    <label for="teacherEmail">Email</label>
+    <input type="email" id="teacherEmail" placeholder="e.g. adeyemi@school.com" />
+    <label for="teacherPassword" style="margin-top:12px;">Password</label>
+    <div style="position:relative; margin-bottom:16px;">
+      <input type="password" id="teacherPassword" style="padding-right:64px;" />
+      <button type="button" onclick="togglePasswordVisibility('teacherPassword', this)" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:auto; padding:4px 10px; font-size:10px; background:var(--cream); color:var(--navy); box-shadow:none; border:1px solid var(--border); border-radius:8px; text-transform:none; font-family:'Nunito',Arial,sans-serif; font-weight:700;">Show</button>
+    </div>
+    <button class="primary" style="width:100%;" onclick="login()">Log in</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="wrap" id="appWrap" style="display:none;">
+
+  <div class="school-header">
+    <div class="crest">GS</div>
+    <h1>Greenfield Secondary School</h1>
+    <p>Attendance, comments &amp; student photos</p>
+  </div>
+
+  <div class="card">
+    <div class="topbar">
+      <span class="who" id="whoAmI"></span>
+      <button onclick="logout()">Log out</button>
+    </div>
+
+    <div class="filters">
+      <div>
+        <label for="termSelect">Term</label>
+        <select id="termSelect">
+          <option>First Term</option>
+          <option>Second Term</option>
+          <option>Third Term</option>
+        </select>
+      </div>
+      <div>
+        <label for="sessionInput">Session</label>
+        <input type="text" id="sessionInput" value="2025/2026" />
+      </div>
+    </div>
+
+    <div class="load-btn-row" style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="primary" onclick="loadRoster()">Load my class</button>
+      <button class="ghost" onclick="loadBroadsheet()">View broadsheet</button>
+      <button class="ghost" onclick="loadAllResultSlips()">Print all result slips</button>
+    </div>
+  </div>
+
+  <div class="card" id="rosterCard" style="display:none;">
+    <div id="studentList"></div>
+    <div class="save-row">
+      <button class="primary" onclick="saveAll()">Save all</button>
+    </div>
+  </div>
+
+  <div class="card" id="broadsheetCard" style="display:none;">
+    <div class="topbar" style="margin-bottom:14px;">
+      <span class="who" id="broadsheetTitle"></span>
+      <span>
+        <select id="broadsheetSort" onchange="resortBroadsheet()" style="width:auto; padding:6px 8px; font-size:12px; margin-right:8px;">
+          <option value="name">Sort: Name (A-Z)</option>
+          <option value="position">Sort: Position (1st first)</option>
+        </select>
+        <button onclick="window.print()">Print</button>
+      </span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="broadsheetTable" style="width:100%; border-collapse:collapse; font-size:12px; min-width:600px;"></table>
+    </div>
+  </div>
+
+  <div class="card" id="allSlipsCard" style="display:none;">
+    <div class="topbar" style="margin-bottom:14px;">
+      <span class="who" id="allSlipsTitle"></span>
+      <button onclick="window.print()">Print / Save as PDF</button>
+    </div>
+    <div id="allSlipsContainer"></div>
+  </div>
+
+  <div class="empty-note" id="emptyNote" style="display:none;">
+    You are not set up as the form teacher for any class yet, or that class has no students.
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API_BASE = window.location.origin.includes('4000') ? window.location.origin : 'http://localhost:4000';
+  let teacher = null;
+  let myClass = null;
+  let currentRoster = [];
+
+  const saved = sessionStorage.getItem('resultpro_teacher');
+  if (saved) {
+    teacher = JSON.parse(saved);
+    boot();
+  }
+
+  function showToast(message) {
+    const t = document.getElementById('toast');
+    t.textContent = message;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 2500);
+  }
+
+  function getInitials(name) {
+    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === "password") { input.type = "text"; btn.textContent = "Hide"; }
+    else { input.type = "password"; btn.textContent = "Show"; }
+  }
+
+  async function login() {
+    const email = document.getElementById('teacherEmail').value.trim();
+    const password = document.getElementById('teacherPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+
+    if (!email || !password) {
+      errEl.textContent = 'Please enter both email and password.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+
+      teacher = data.teacher;
+      sessionStorage.setItem('resultpro_teacher', JSON.stringify(teacher));
+      boot();
+    } catch (err) {
+      errEl.textContent = err.message || 'Login failed.';
+      errEl.style.display = 'block';
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem('resultpro_teacher');
+    teacher = null;
+    document.getElementById('appWrap').style.display = 'none';
+    document.getElementById('loginWrap').style.display = 'block';
+  }
+
+  async function boot() {
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'block';
+    document.getElementById('whoAmI').textContent = `Logged in as ${teacher.name}`;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/form-teacher/my-class?teacher_id=${teacher.id}`);
+      const data = await res.json();
+      myClass = data.class;
+      if (!myClass) {
+        document.getElementById('emptyNote').style.display = 'block';
+      }
+    } catch (err) {
+      showToast('Could not check your class assignment.');
+    }
+  }
+
+  async function loadRoster() {
+    if (!myClass) { showToast('You are not assigned as a form teacher for any class.'); return; }
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
+    if (!session) { showToast('Please enter a session.'); return; }
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/form-teacher/roster?class=${encodeURIComponent(myClass)}&term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}&teacher_id=${teacher.id}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load class');
+
+      currentRoster = data.roster || [];
+      if (currentRoster.length === 0) {
+        document.getElementById('rosterCard').style.display = 'none';
+        document.getElementById('emptyNote').style.display = 'block';
+        return;
+      }
+      document.getElementById('emptyNote').style.display = 'none';
+      renderRoster();
+    } catch (err) {
+      showToast(err.message || 'Could not load class.');
+    }
+  }
+
+  function renderRoster() {
+    document.getElementById('rosterCard').style.display = 'block';
+    const list = document.getElementById('studentList');
+
+    list.innerHTML = currentRoster.map((s, i) => `
+      <div class="student-row">
+        <div class="avatar-wrap">
+          <div class="avatar" id="avatar-${i}">
+            ${s.photo_url ? `<img src="${API_BASE}${s.photo_url}" alt="${s.name}" />` : getInitials(s.name)}
+          </div>
+          <label class="photo-btn" for="photoFile-${i}">Change photo</label>
+          <input class="photo-input" type="file" id="photoFile-${i}" accept="image/png, image/jpeg, image/webp"
+                 onchange="uploadPhoto(${i})" />
+        </div>
+        <div class="student-fields">
+          <p class="name">${s.name}</p>
+          <div class="attendance-row">
+            <div>
+              <label>Present</label>
+              <input type="number" min="0" id="present-${i}" value="${s.times_present ?? ''}" />
+            </div>
+            <div>
+              <label>Absent</label>
+              <input type="number" min="0" id="absent-${i}" value="${s.times_absent ?? ''}" />
+            </div>
+            <div>
+              <label>Total days</label>
+              <input type="number" min="0" id="total-${i}" value="${s.total_days ?? ''}" />
+            </div>
+          </div>
+          <label>Form teacher's comment</label>
+          <textarea id="comment-${i}" placeholder="e.g. Diligent but needs to work harder on mathematics.">${s.form_teacher_comment ?? ''}</textarea>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function uploadPhoto(i) {
+    const fileInput = document.getElementById(`photoFile-${i}`);
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+    formData.append('student_id', currentRoster[i].student_id);
+    formData.append('class', myClass);
+    formData.append('teacher_id', teacher.id);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/form-teacher/upload-photo`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Photo upload failed');
+
+      currentRoster[i].photo_url = data.photo_url;
+      document.getElementById(`avatar-${i}`).innerHTML = `<img src="${API_BASE}${data.photo_url}" alt="" />`;
+      showToast('Photo updated.');
+    } catch (err) {
+      showToast(err.message || 'Could not upload photo.');
+    }
+  }
+
+  let lastBroadsheetData = null;
+
+  async function loadAllResultSlips() {
+    if (!myClass) { showToast('You are not assigned as a form teacher for any class.'); return; }
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
+    if (!session) { showToast('Please enter a session.'); return; }
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/form-teacher/class-result-slips?class=${encodeURIComponent(myClass)}&term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}&teacher_id=${teacher.id}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load result slips');
+
+      if (!data.slips || data.slips.length === 0) {
+        showToast('No students or scores found for this class/term/session yet.');
+        return;
+      }
+
+      document.getElementById('rosterCard').style.display = 'none';
+      document.getElementById('broadsheetCard').style.display = 'none';
+      document.getElementById('emptyNote').style.display = 'none';
+      document.getElementById('allSlipsCard').style.display = 'block';
+      document.getElementById('allSlipsTitle').textContent = `${data.class} — ${data.term}, ${data.session} — ${data.slips.length} students`;
+      renderAllResultSlips(data);
+    } catch (err) {
+      showToast(err.message || 'Could not load result slips.');
+    }
+  }
+
+  function renderAllResultSlips(data) {
+    const container = document.getElementById('allSlipsContainer');
+    container.innerHTML = data.slips.map((slip) => {
+      const s = slip.student;
+      const avatar = s.photo_url
+        ? `<img src="${API_BASE}${s.photo_url}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+        : getInitials(s.name);
+
+      const subjectRows = slip.subjects.map(sub => `
+        <tr>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${sub.subject_name}</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.ca}</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.exam}</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); font-weight:bold;">${sub.total}</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.highest ?? '—'}</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.position}</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);"><span style="background:var(--pass-bg); color:var(--pass); padding:1px 7px; border-radius:6px; font-weight:bold; font-size:11px;">${sub.grade || '—'}</span></td>
+        </tr>`).join('');
+
+      const commentsHtml = (slip.comments && (slip.comments.form_teacher || slip.comments.principal)) ? `
+        <div style="border-top:1px solid var(--border); margin-top:14px; padding-top:12px;">
+          ${slip.comments.form_teacher ? `<p style="font-size:11px; color:var(--text-soft); margin:0 0 4px; text-transform:uppercase;">Form teacher's comment</p><p style="font-size:13px; margin:0 0 10px;">${slip.comments.form_teacher}</p>` : ''}
+          ${slip.comments.principal ? `<p style="font-size:11px; color:var(--text-soft); margin:0 0 4px; text-transform:uppercase;">Principal's comment</p><p style="font-size:13px; margin:0;">${slip.comments.principal}</p>` : ''}
+        </div>` : '';
+
+      return `
+        <div class="result-slip-page" style="border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border);">
+            <div style="width:48px; height:48px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; overflow:hidden; flex-shrink:0;">${avatar}</div>
+            <div>
+              <p style="font-weight:bold; font-size:15px; margin:0;">${s.name}</p>
+              <p style="font-size:12px; color:var(--text-soft); margin:2px 0 0;">${data.class} &middot; Admission no. ${s.admission_no} &middot; ${data.term}, ${data.session}</p>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:14px;">
+            <div style="background:var(--cream); border-radius:10px; padding:8px 10px;"><p style="font-size:10px; color:var(--text-soft); margin:0;">Total</p><p style="font-size:14px; font-weight:bold; margin:2px 0 0;">${slip.summary.total_score}/${slip.summary.max_obtainable}</p></div>
+            <div style="background:var(--cream); border-radius:10px; padding:8px 10px;"><p style="font-size:10px; color:var(--text-soft); margin:0;">Average</p><p style="font-size:14px; font-weight:bold; margin:2px 0 0;">${slip.summary.average}%</p></div>
+            <div style="background:var(--cream); border-radius:10px; padding:8px 10px;"><p style="font-size:10px; color:var(--text-soft); margin:0;">Position</p><p style="font-size:14px; font-weight:bold; margin:2px 0 0;">${slip.summary.class_position} of ${slip.summary.class_size}</p></div>
+            <div style="background:var(--cream); border-radius:10px; padding:8px 10px;"><p style="font-size:10px; color:var(--text-soft); margin:0;">Attendance</p><p style="font-size:14px; font-weight:bold; margin:2px 0 0;">${slip.attendance ? `${slip.attendance.present}/${slip.attendance.total_days}` : '—'}</p></div>
+          </div>
+
+          <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:6px 4px; border-bottom:1px solid var(--border); color:var(--text-soft); font-size:11px;">Subject</th>
+                <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); color:var(--text-soft); font-size:11px;">CA</th>
+                <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); color:var(--text-soft); font-size:11px;">Exam</th>
+                <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); color:var(--text-soft); font-size:11px;">Total</th>
+                <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); color:var(--text-soft); font-size:11px;">Highest</th>
+                <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); color:var(--text-soft); font-size:11px;">Pos</th>
+                <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); color:var(--text-soft); font-size:11px;">Grade</th>
+              </tr>
+            </thead>
+            <tbody>${subjectRows}</tbody>
+          </table>
+
+          ${commentsHtml}
+        </div>`;
+    }).join('');
+  }
+
+  async function loadBroadsheet() {
+    if (!myClass) { showToast('You are not assigned as a form teacher for any class.'); return; }
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
+    if (!session) { showToast('Please enter a session.'); return; }
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/form-teacher/broadsheet?class=${encodeURIComponent(myClass)}&term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}&teacher_id=${teacher.id}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load broadsheet');
+
+      if (!data.rows || data.rows.length === 0) {
+        document.getElementById('broadsheetCard').style.display = 'none';
+        showToast('No students or scores found for this class/term/session yet.');
+        return;
+      }
+
+      lastBroadsheetData = data;
+      document.getElementById('rosterCard').style.display = 'none';
+      document.getElementById('emptyNote').style.display = 'none';
+      document.getElementById('broadsheetCard').style.display = 'block';
+      document.getElementById('broadsheetTitle').textContent = `${data.class} — ${data.term}, ${data.session}`;
+      renderBroadsheet(data);
+    } catch (err) {
+      showToast(err.message || 'Could not load broadsheet.');
+    }
+  }
+
+  function resortBroadsheet() {
+    if (!lastBroadsheetData) return;
+    renderBroadsheet(lastBroadsheetData);
+  }
+
+  function renderBroadsheet(data) {
+    const sortMode = document.getElementById('broadsheetSort').value;
+    const sortedRows = [...data.rows].sort((a, b) => {
+      if (sortMode === 'position') return a.class_position_rank - b.class_position_rank;
+      return a.name.localeCompare(b.name);
+    });
+
+    const table = document.getElementById('broadsheetTable');
+    const subjectHeaders = data.subjects.map(s => `<th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); font-size:10px;">${s.name}</th>`).join('');
+
+    const headerRow = `
+      <tr>
+        <th style="text-align:left; padding:6px 4px; border-bottom:1px solid var(--border);">Student</th>
+        ${subjectHeaders}
+        <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">Total</th>
+        <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">Avg</th>
+        <th style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">Position</th>
+      </tr>`;
+
+    const bodyRows = sortedRows.map(r => {
+      const subjectCells = r.subject_scores.map(sc => `
+        <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">
+          ${sc.total !== null ? `${sc.total} <span style="color:var(--text-soft); font-size:10px;">(${sc.grade})</span>` : '—'}
+        </td>`).join('');
+      return `
+        <tr>
+          <td style="padding:6px 4px; border-bottom:1px solid var(--border); font-weight:bold;">${r.name}</td>
+          ${subjectCells}
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); font-weight:bold;">${r.total_score} / ${r.max_obtainable}</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${r.average}%</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${r.class_position}</td>
+        </tr>`;
+    }).join('');
+
+    table.innerHTML = headerRow + bodyRows;
+  }
+
+  async function saveAll() {
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
+
+    const records = currentRoster.map((s, i) => ({
+      student_id: s.student_id,
+      times_present: document.getElementById(`present-${i}`).value === '' ? null : Number(document.getElementById(`present-${i}`).value),
+      times_absent: document.getElementById(`absent-${i}`).value === '' ? null : Number(document.getElementById(`absent-${i}`).value),
+      total_days: document.getElementById(`total-${i}`).value === '' ? null : Number(document.getElementById(`total-${i}`).value),
+      form_teacher_comment: document.getElementById(`comment-${i}`).value.trim() || null,
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/form-teacher/term-records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ class: myClass, term, session, teacher_id: teacher.id, records }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      showToast('Saved for the whole class.');
+    } catch (err) {
+      showToast(err.message || 'Could not save.');
+    }
+  }
+</script>
+</body>
+</html>

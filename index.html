@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Ledger — Invoices, Stock &amp; Debts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- FIREBASE: fill in your config in the script below, under FIREBASE CONFIG -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --paper:#F6F1E7;
+    --card:#FFFDF8;
+    --line:#DDD3BD;
+    --line-soft:#EAE2D0;
+    --ink:#22281F;
+    --ink-soft:#5B6156;
+    --green:#2F4B3C;
+    --green-soft:#E4EAE3;
+    --red:#A73B3B;
+    --red-soft:#F3E3E1;
+    --amber:#B8862E;
+    --amber-soft:#F5EBD9;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+  h1,h2,h3{font-family:'Arvo',serif;font-weight:700;margin:0;}
+
+  .app-shell{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    background:var(--paper);
+  }
+
+  /* HEADER */
+  header.top{
+    padding:18px 18px 14px;
+    border-bottom:2px solid var(--ink);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+  }
+  header.top .brand{display:flex;flex-direction:column;gap:2px;}
+  header.top h1{font-size:21px;letter-spacing:-0.01em;}
+  header.top .date{font-size:11px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+  header.top button.gear{
+    background:none;border:1px solid var(--line);border-radius:50%;
+    width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+    color:var(--ink-soft);cursor:pointer;
+  }
+  header.top button.gear:active{background:var(--line-soft);}
+
+  main{flex:1;overflow-y:auto;padding:14px 18px 90px;}
+
+  /* SECTION HEADER ROW */
+  .section-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .section-row h2{font-size:17px;}
+  .totals-strip{
+    display:flex;gap:10px;margin-bottom:16px;
+  }
+  .totals-strip .stat{
+    flex:1;border:1px solid var(--line);border-radius:var(--radius);
+    padding:10px 12px;background:var(--card);
+  }
+  .totals-strip .stat .label{font-size:10.5px;color:var(--ink-soft);}
+  .totals-strip .stat .value{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;margin-top:2px;}
+
+  /* LEDGER ROWS (list) */
+  .ledger{border-top:1px solid var(--line);}
+  .row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:13px 2px;border-bottom:1px solid var(--line-soft);
+    cursor:pointer;
+  }
+  .row:active{background:var(--line-soft);}
+  .row .left{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .row .title{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .row .sub{font-size:11.5px;color:var(--ink-soft);}
+  .row .right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;padding-left:10px;}
+  .row .amount{font-family:'IBM Plex Mono',monospace;font-size:14.5px;font-weight:600;}
+  .pill{
+    font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;letter-spacing:0.02em;
+  }
+  .pill.paid{background:var(--green-soft);color:var(--green);}
+  .pill.credit{background:var(--red-soft);color:var(--red);}
+  .pill.ok{background:var(--green-soft);color:var(--green);}
+  .pill.low{background:var(--amber-soft);color:var(--amber);}
+  .pill.out{background:var(--red-soft);color:var(--red);}
+
+  .empty{
+    text-align:center;padding:50px 20px;color:var(--ink-soft);
+  }
+  .empty h3{font-family:'Inter',sans-serif;font-size:14.5px;color:var(--ink);margin-bottom:5px;}
+  .empty p{font-size:12.5px;margin:0;}
+
+  /* BOTTOM NAV */
+  nav.bottom{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:480px;
+    background:var(--card);border-top:2px solid var(--ink);
+    display:flex;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav.bottom button{
+    flex:1;background:none;border:none;padding:9px 4px 8px;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    color:var(--ink-soft);cursor:pointer;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;
+  }
+  nav.bottom button.active{color:var(--ink);}
+  nav.bottom button svg{width:20px;height:20px;}
+  nav.bottom button.active svg{stroke:var(--ink);}
+
+  /* BUTTONS */
+  button.primary{
+    background:var(--ink);color:var(--paper);border:none;border-radius:var(--radius);
+    padding:12px 16px;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+  }
+  button.primary:active{opacity:0.85;}
+  button.secondary{
+    background:none;color:var(--ink);border:1px solid var(--ink);border-radius:var(--radius);
+    padding:11px 16px;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
+  }
+  button.danger{color:var(--red);border-color:var(--red);}
+  button.block{width:100%;}
+  .fab{
+    position:fixed;bottom:78px;left:50%;
+    transform:translateX(calc(-50% + 190px));
+    width:50px;height:50px;border-radius:50%;
+    background:var(--ink);color:var(--paper);border:none;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 3px 10px rgba(0,0,0,0.25);cursor:pointer;
+    font-size:24px;
+  }
+
+  /* MODAL / SHEET */
+  .overlay{
+    position:fixed;inset:0;background:rgba(34,40,31,0.45);
+    display:flex;align-items:flex-end;justify-content:center;z-index:50;
+  }
+  .sheet{
+    background:var(--paper);width:100%;max-width:480px;
+    max-height:92vh;overflow-y:auto;border-radius:14px 14px 0 0;
+    padding:18px 18px calc(24px + env(safe-area-inset-bottom));
+    animation:slideup 0.22s ease-out;
+  }
+  @keyframes slideup{from{transform:translateY(24px);opacity:0.4;}to{transform:translateY(0);opacity:1;}}
+  .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .sheet-head h2{font-size:18px;}
+  .sheet-head button.close{background:none;border:none;color:var(--ink-soft);font-size:22px;cursor:pointer;line-height:1;padding:4px;}
+
+  label{display:block;font-size:11.5px;color:var(--ink-soft);margin:12px 0 5px;font-weight:600;}
+  input,select,textarea{
+    width:100%;border:1px solid var(--line);border-radius:var(--radius);
+    padding:10px 11px;font-family:'Inter',sans-serif;font-size:14.5px;background:var(--card);color:var(--ink);
+  }
+  input.num-input{font-family:'IBM Plex Mono',monospace;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ink);}
+  .row-2{display:flex;gap:10px;}
+  .row-2 > div{flex:1;}
+
+  .item-line{
+    display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:var(--radius);
+    padding:9px 10px;margin-bottom:8px;background:var(--card);
+  }
+  .item-line .info{flex:1;min-width:0;}
+  .item-line .info .n{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .item-line .info .p{font-size:11px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+  .qty-stepper{display:flex;align-items:center;gap:6px;}
+  .qty-stepper button{
+    width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--paper);
+    font-size:15px;cursor:pointer;color:var(--ink);
+  }
+  .qty-stepper span{width:22px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13.5px;}
+  .item-line .lt{width:62px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600;}
+  .item-line .rm{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:2px 4px;}
+
+  .total-line{display:flex;justify-content:space-between;padding-top:12px;margin-top:6px;border-top:2px solid var(--ink);}
+  .total-line .l{font-family:'Arvo',serif;font-size:15px;}
+  .total-line .v{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;}
+
+  .toggle-group{display:flex;gap:8px;}
+  .toggle-group button{
+    flex:1;padding:9px;border:1px solid var(--line);border-radius:var(--radius);
+    background:var(--card);color:var(--ink-soft);font-weight:600;font-size:13px;cursor:pointer;
+  }
+  .toggle-group button.sel{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  .search-add{position:relative;}
+  .suggest{
+    position:absolute;top:100%;left:0;right:0;background:var(--card);
+    border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);
+    max-height:220px;overflow-y:auto;z-index:10;box-shadow:0 6px 14px rgba(0,0,0,0.08);
+  }
+  .suggest .opt{padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer;display:flex;justify-content:space-between;}
+  .suggest .opt:active{background:var(--line-soft);}
+  .suggest .opt .n{font-size:13.5px;}
+  .suggest .opt .s{font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
+
+  .scanbox{
+    background:#111;border-radius:var(--radius);overflow:hidden;position:relative;
+    aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;margin-bottom:10px;
+  }
+  .scanbox video{width:100%;height:100%;object-fit:cover;}
+  .scan-note{font-size:11.5px;color:var(--ink-soft);text-align:center;padding:6px 0;}
+
+  /* DETAIL VIEW */
+  .detail-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .detail-card .dl-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;}
+  .detail-card .dl-row .k{color:var(--ink-soft);}
+  .detail-card .dl-row .v{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .back-btn{background:none;border:none;color:var(--ink-soft);font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;margin-bottom:12px;padding:2px;}
+
+  /* PRINT AREA (hidden on screen) */
+  #print-area{display:none;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #print-area, #print-area *{visibility:visible;}
+    #print-area{
+      display:block;position:absolute;top:0;left:0;width:72mm;
+      font-family:'IBM Plex Mono',monospace;font-size:11px;color:#000;padding:6mm;
+    }
+    #print-area .pr-shop{font-family:'Arvo',serif;font-size:15px;font-weight:700;text-align:center;}
+    #print-area .pr-sub{text-align:center;font-size:9.5px;margin-bottom:6px;}
+    #print-area hr{border:none;border-top:1px dashed #000;margin:6px 0;}
+    #print-area .pr-row{display:flex;justify-content:space-between;font-size:10.5px;padding:2px 0;}
+    #print-area .pr-tot{display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:4px;}
+    #print-area .pr-foot{text-align:center;font-size:9.5px;margin-top:10px;}
+  }
+
+  .toast{
+    position:fixed;bottom:96px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--paper);padding:9px 18px;border-radius:20px;
+    font-size:12.5px;font-weight:600;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.2s;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="app-shell" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<div id="print-area">
+  <div class="pr-shop" id="pr-shop"></div>
+  <div class="pr-sub" id="pr-meta"></div>
+  <hr>
+  <div id="pr-items"></div>
+  <hr>
+  <div class="pr-tot"><span>TOTAL</span><span id="pr-total"></span></div>
+  <div class="pr-row" id="pr-status-row"></div>
+  <div class="pr-foot">Thank you</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- STATE ----------
+  var state = {
+    shopName: "My Shop",
+    currency: "$",
+    lowStock: 5,
+    products: [],
+    customers: [],
+    invoices: [],
+    nextInvoiceNo: 1001
+  };
+  var view = "invoices"; // invoices | inventory | debts
+  var sheet = null; // current open sheet descriptor
+  var detail = null; // {type:'invoice'|'customer', id}
+  var loaded = false;
+
+  // ---------- FIREBASE CONFIG ----------
+  // Get these values from Firebase Console > Project settings > General > Your apps > SDK setup and config
+  var firebaseConfig = {
+    apiKey: "AIzaSyAmvYLPNcTOZY1E6r2nZlZe0msEsI9aIxs",
+
+  authDomain: "shop-ledger-26699.firebaseapp.com",
+
+  projectId: "shop-ledger-26699",
+
+  storageBucket: "shop-ledger-26699.firebasestorage.app",
+
+  messagingSenderId: "277177596567",
+
+  appId: "1:277177596567:web:e60b7b9ff2f74c9ad2c7d2"
+
+  };
+  var db = null;
+  var firebaseReady = false;
+  var shopId = null; // which Firestore document this device is synced to
+  var unsubscribe = null;
+  var suppressNextSnapshot = false;
+
+  try{
+    if(firebaseConfig.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined'){
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      firebaseReady = true;
+    }
+  }catch(e){ firebaseReady = false; }
+
+  // ---------- STORAGE ----------
+  // Remembers which Shop ID this device should sync to (not the shop data itself, just the pointer).
+  async function rememberShopId(id){
+    shopId = id;
+    try{ await window.storage.set('shop-id', id, false); }catch(e){}
+  }
+  async function recallShopId(){
+    try{
+      var res = await window.storage.get('shop-id', false);
+      return res && res.value ? res.value : null;
+    }catch(e){ return null; }
+  }
+
+  async function loadData(){
+    if(firebaseReady){
+      shopId = await recallShopId();
+      if(!shopId){
+        loaded = true; // show the connect gate instead of the app
+        render();
+        return;
+      }
+      subscribeToShop(shopId);
+      return;
+    }
+    // Local-only fallback (no Firebase configured yet)
+    try{
+      var res = await window.storage.get('shop-data', false);
+      if(res && res.value){
+        var parsed = JSON.parse(res.value);
+        state = Object.assign(state, parsed);
+      }
+    }catch(e){ /* no data yet */ }
+    loaded = true;
+    render();
+  }
+
+  function subscribeToShop(id){
+    if(unsubscribe) unsubscribe();
+    unsubscribe = db.collection('shops').doc(id).onSnapshot(function(doc){
+      if(suppressNextSnapshot){ suppressNextSnapshot = false; }
+      if(doc.exists){
+        state = Object.assign(state, doc.data());
+      } else {
+        db.collection('shops').doc(id).set(state); // first device to use this Shop ID seeds it
+      }
+      loaded = true;
+      render();
+    }, function(err){
+      showToast('Cloud sync error — check your connection');
+      loaded = true; render();
+    });
+  }
+
+  async function saveData(){
+    if(firebaseReady && shopId){
+      try{
+        suppressNextSnapshot = true;
+        await db.collection('shops').doc(shopId).set(state);
+      }catch(e){
+        showToast("Couldn't sync to cloud — try again");
+      }
+      return;
+    }
+    try{
+      await window.storage.set('shop-data', JSON.stringify(state), false);
+    }catch(e){
+      showToast("Couldn't save — try again");
+    }
+  }
+
+  async function connectToShop(id){
+    id = id.trim();
+    if(!id){ showToast('Enter a Shop ID'); return; }
+    await rememberShopId(id);
+    subscribeToShop(id);
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function fmt(n){ return state.currency + (Math.round(n*100)/100).toFixed(2); }
+  function todayStr(){
+    var d = new Date();
+    return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  }
+
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 1800);
+  }
+
+  // ---------- ICONS ----------
+  var ICONS = {
+    invoices: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10v18l-3-2-2 2-2-2-3 2V3z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>',
+    inventory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/></svg>',
+    debts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>',
+    scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><line x1="6" y1="12" x2="18" y2="12"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9c.2.5.7.9 1.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'
+  };
+
+  // ---------- DERIVED ----------
+  function outstandingTotal(){
+    return state.customers.reduce(function(s,c){ return s + (c.balance||0); }, 0);
+  }
+  function stockValue(){
+    return state.products.reduce(function(s,p){ return s + p.qty*p.price; }, 0);
+  }
+  function lowStockCount(){
+    return state.products.filter(function(p){ return p.qty <= (state.lowStock) && p.qty > 0; }).length;
+  }
+
+  // ---------- RENDER ROOT ----------
+  function render(){
+    var app = document.getElementById('app');
+    if(!loaded){ app.innerHTML = '<div class="empty" style="padding-top:120px;">Loading…</div>'; return; }
+
+    if(firebaseReady && !shopId){ renderConnectGate(app); return; }
+
+    var html = '';
+    html += renderHeader();
+    html += '<main>' + renderMain() + '</main>';
+    html += renderNav();
+    if(view==='invoices') html += '<button class="fab" id="fab-new" aria-label="New invoice">+</button>';
+
+    app.innerHTML = html;
+    attachRootEvents();
+    if(sheet) renderSheet();
+  }
+
+  function renderConnectGate(app){
+    app.innerHTML =
+      '<div style="padding:60px 24px;text-align:center;">' +
+        '<h1 style="font-size:22px;margin-bottom:8px;">Connect this device</h1>' +
+        '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:22px;">Create a new Shop ID for a new business, or enter an existing one to sync with other devices already using it.</p>' +
+        '<label style="text-align:left;">Shop ID</label>' +
+        '<input id="gate-shopid" placeholder="e.g. mercy-store-2026" style="text-align:center;">' +
+        '<button class="primary block" id="gate-connect" style="margin-top:16px;">Connect</button>' +
+        '<p style="font-size:11px;color:var(--ink-soft);margin-top:14px;">Tip: pick something unique. Anyone who enters the same Shop ID sees the same data.</p>' +
+      '</div>';
+    document.getElementById('gate-connect').addEventListener('click', function(){
+      connectToShop(document.getElementById('gate-shopid').value);
+    });
+  }
+
+  function renderHeader(){
+    return '<header class="top">' +
+      '<div class="brand"><h1>'+escapeHtml(state.shopName)+'</h1><div class="date">'+todayStr()+'</div></div>' +
+      '<button class="gear" id="btn-settings">'+ICONS.gear+'</button>' +
+    '</header>';
+  }
+
+  function renderNav(){
+    function btn(id,label){
+      return '<button data-view="'+id+'" class="'+(view===id?'active':'')+'">'+ICONS[id]+'<span>'+label+'</span></button>';
+    }
+    return '<nav class="bottom">' +
+      btn('invoices','Invoices') + btn('inventory','Stock') + btn('debts','Debts') +
+      '<button id="btn-scan">'+ICONS.scan+'<span>Scan</span></button>' +
+    '</nav>';
+  }
+
+  function renderMain(){
+    if(detail) return renderDetail();
+    if(view==='invoices') return renderInvoicesList();
+    if(view==='inventory') return renderInventoryList();
+    if(view==='debts') return renderDebtsList();
+    return '';
+  }
+
+  // ---------- INVOICES LIST ----------
+  function renderInvoicesList(){
+    var invs = state.invoices.slice().sort(function(a,b){ return b.createdAt-a.createdAt; });
+    var todayCount = invs.filter(function(i){ return sameDay(i.createdAt, Date.now()); }).length;
+    var todaySum = invs.filter(function(i){ return sameDay(i.createdAt, Date.now()); }).reduce(function(s,i){return s+i.total;},0);
+
+    var html = '<div class="totals-strip">' +
+      '<div class="stat"><div class="label">Today</div><div class="value">'+fmt(todaySum)+'</div></div>' +
+      '<div class="stat"><div class="label">Outstanding</div><div class="value">'+fmt(outstandingTotal())+'</div></div>' +
+    '</div>';
+
+    html += '<div class="section-row"><h2>Invoices</h2></div>';
+
+    if(invs.length===0){
+      html += '<div class="empty"><h3>No invoices yet</h3><p>Tap + to create your first invoice.</p></div>';
+      return html;
+    }
+
+    html += '<div class="ledger">';
+    invs.forEach(function(inv){
+      var custName = inv.customerId ? (findCustomer(inv.customerId)||{}).name : 'Walk-in';
+      html += '<div class="row" data-open-invoice="'+inv.id+'">' +
+        '<div class="left"><div class="title">'+escapeHtml(custName||'Walk-in')+'</div>' +
+        '<div class="sub">#'+inv.number+' · '+new Date(inv.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</div></div>' +
+        '<div class="right"><div class="amount">'+fmt(inv.total)+'</div>' +
+        '<span class="pill '+(inv.type==='credit'?'credit':'paid')+'">'+(inv.type==='credit'?'Credit':'Paid')+'</span></div>' +
+      '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function sameDay(ts, ts2){
+    var a=new Date(ts), b=new Date(ts2);
+    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  }
+
+  // ---------- INVENTORY LIST ----------
+  function renderInventoryList(){
+    var html = '<div class="totals-strip">' +
+      '<div class="stat"><div class="label">Items</div><div class="value">'+state.products.length+'</div></div>' +
+      '<div class="stat"><div class="label">Stock value</div><div class="value">'+fmt(stockValue())+'</div></div>' +
+    '</div>';
+    html += '<div class="section-row"><h2>Inventory</h2><button class="secondary" id="btn-add-product" style="padding:6px 12px;font-size:12.5px;">+ Item</button></div>';
+
+    if(state.products.length===0){
+      html += '<div class="empty"><h3>No items yet</h3><p>Add products to start tracking stock.</p></div>';
+      return html;
+    }
+
+    var sorted = state.products.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+    html += '<div class="ledger">';
+    sorted.forEach(function(p){
+      var pillClass = p.qty<=0 ? 'out' : (p.qty<=state.lowStock ? 'low' : 'ok');
+      var pillText = p.qty<=0 ? 'Out' : (p.qty<=state.lowStock ? 'Low' : 'In stock');
+      html += '<div class="row" data-open-product="'+p.id+'">' +
+        '<div class="left"><div class="title">'+escapeHtml(p.name)+'</div><div class="sub">SKU '+escapeHtml(p.sku||'—')+' · '+fmt(p.price)+'</div></div>' +
+        '<div class="right"><div class="amount">'+p.qty+'</div><span class="pill '+pillClass+'">'+pillText+'</span></div>' +
+      '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  // ---------- DEBTS LIST ----------
+  function renderDebtsList(){
+    var owing = state.customers.filter(function(c){ return (c.balance||0) > 0; }).sort(function(a,b){ return b.balance-a.balance; });
+    var html = '<div class="totals-strip">' +
+      '<div class="stat"><div class="label">Customers owing</div><div class="value">'+owing.length+'</div></div>' +
+      '<div class="stat"><div class="label">Total owed</div><div class="value">'+fmt(outstandingTotal())+'</div></div>' +
+    '</div>';
+    html += '<div class="section-row"><h2>Debts</h2><button class="secondary" id="btn-add-customer" style="padding:6px 12px;font-size:12.5px;">+ Customer</button></div>';
+
+    if(owing.length===0){
+      html += '<div class="empty"><h3>All settled</h3><p>No customers currently owe you money.</p></div>';
+    } else {
+      html += '<div class="ledger">';
+      owing.forEach(function(c){
+        html += '<div class="row" data-open-customer="'+c.id+'">' +
+          '<div class="left"><div class="title">'+escapeHtml(c.name)+'</div><div class="sub">'+escapeHtml(c.phone||'No phone')+'</div></div>' +
+          '<div class="right"><div class="amount">'+fmt(c.balance)+'</div><span class="pill credit">Owing</span></div>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  // ---------- DETAIL VIEWS ----------
+  function renderDetail(){
+    if(detail.type==='invoice') return renderInvoiceDetail();
+    if(detail.type==='customer') return renderCustomerDetail();
+    if(detail.type==='product') return renderProductDetail();
+    return '';
+  }
+
+  function renderInvoiceDetail(){
+    var inv = state.invoices.find(function(i){ return i.id===detail.id; });
+    if(!inv){ detail=null; return renderInvoicesList(); }
+    var custName = inv.customerId ? (findCustomer(inv.customerId)||{}).name : 'Walk-in';
+    var html = '<button class="back-btn" id="btn-back">'+ICONS.back+' Back</button>';
+    html += '<div class="detail-card">' +
+      '<div class="dl-row"><span class="k">Invoice</span><span class="v">#'+inv.number+'</span></div>' +
+      '<div class="dl-row"><span class="k">Customer</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(custName||'Walk-in')+'</span></div>' +
+      '<div class="dl-row"><span class="k">Date</span><span class="v">'+new Date(inv.createdAt).toLocaleString()+'</span></div>' +
+      '<div class="dl-row"><span class="k">Status</span><span class="v" style="font-family:Inter,sans-serif;">'+(inv.type==='credit'?'On credit':'Paid in full')+'</span></div>' +
+    '</div>';
+
+    html += '<div class="section-row"><h2 style="font-size:14px;">Items</h2></div>';
+    html += '<div class="ledger">';
+    inv.items.forEach(function(it){
+      html += '<div class="row" style="cursor:default;">' +
+        '<div class="left"><div class="title">'+escapeHtml(it.name)+'</div><div class="sub">'+it.qty+' × '+fmt(it.price)+'</div></div>' +
+        '<div class="right"><div class="amount">'+fmt(it.qty*it.price)+'</div></div>' +
+      '</div>';
+    });
+    html += '</div>';
+    html += '<div class="total-line"><span class="l">Total</span><span class="v">'+fmt(inv.total)+'</span></div>';
+    html += '<div style="margin-top:18px;display:flex;gap:10px;">' +
+      '<button class="primary block" id="btn-print-invoice">Print receipt</button>' +
+    '</div>';
+    return html;
+  }
+
+  function renderCustomerDetail(){
+    var c = state.customers.find(function(x){ return x.id===detail.id; });
+    if(!c){ detail=null; return renderDebtsList(); }
+    var custInvoices = state.invoices.filter(function(i){ return i.customerId===c.id; }).sort(function(a,b){return b.createdAt-a.createdAt;});
+    var html = '<button class="back-btn" id="btn-back">'+ICONS.back+' Back</button>';
+    html += '<div class="detail-card">' +
+      '<div class="dl-row"><span class="k">Customer</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(c.name)+'</span></div>' +
+      '<div class="dl-row"><span class="k">Phone</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(c.phone||'—')+'</span></div>' +
+      '<div class="dl-row"><span class="k">Balance owed</span><span class="v" style="color:'+(c.balance>0?'var(--red)':'var(--green)')+';">'+fmt(c.balance||0)+'</span></div>' +
+    '</div>';
+    if((c.balance||0) > 0){
+      html += '<button class="primary block" id="btn-record-payment" style="margin-bottom:18px;">Record payment</button>';
+    }
+    html += '<div class="section-row"><h2 style="font-size:14px;">History</h2></div>';
+    if(custInvoices.length===0){
+      html += '<div class="empty" style="padding:30px 10px;"><p>No invoices for this customer yet.</p></div>';
+    } else {
+      html += '<div class="ledger">';
+      custInvoices.forEach(function(inv){
+        html += '<div class="row" data-open-invoice="'+inv.id+'">' +
+          '<div class="left"><div class="title">Invoice #'+inv.number+'</div><div class="sub">'+new Date(inv.createdAt).toLocaleDateString()+'</div></div>' +
+          '<div class="right"><div class="amount">'+fmt(inv.total)+'</div><span class="pill '+(inv.type==='credit'?'credit':'paid')+'">'+(inv.type==='credit'?'Credit':'Paid')+'</span></div>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function renderProductDetail(){
+    var p = state.products.find(function(x){ return x.id===detail.id; });
+    if(!p){ detail=null; return renderInventoryList(); }
+    var html = '<button class="back-btn" id="btn-back">'+ICONS.back+' Back</button>';
+    html += '<div class="detail-card">' +
+      '<div class="dl-row"><span class="k">Item</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(p.name)+'</span></div>' +
+      '<div class="dl-row"><span class="k">SKU / Barcode</span><span class="v">'+escapeHtml(p.sku||'—')+'</span></div>' +
+      '<div class="dl-row"><span class="k">Price</span><span class="v">'+fmt(p.price)+'</span></div>' +
+      '<div class="dl-row"><span class="k">Quantity</span><span class="v">'+p.qty+'</span></div>' +
+    '</div>';
+    html += '<div style="display:flex;gap:10px;">' +
+      '<button class="secondary block" id="btn-restock">Adjust stock</button>' +
+      '<button class="secondary danger block" id="btn-delete-product">Delete</button>' +
+    '</div>';
+    return html;
+  }
+
+  function findCustomer(id){ return state.customers.find(function(c){ return c.id===id; }); }
+  function findProduct(id){ return state.products.find(function(p){ return p.id===id; }); }
+
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  // ---------- EVENTS: ROOT ----------
+  function attachRootEvents(){
+    var app = document.getElementById('app');
+    app.querySelectorAll('[data-view]').forEach(function(b){
+      b.addEventListener('click', function(){ view=b.getAttribute('data-view'); detail=null; render(); });
+    });
+    var btnScan = document.getElementById('btn-scan');
+    if(btnScan) btnScan.addEventListener('click', openScanSheet);
+    var btnSettings = document.getElementById('btn-settings');
+    if(btnSettings) btnSettings.addEventListener('click', openSettingsSheet);
+    var fab = document.getElementById('fab-new');
+    if(fab) fab.addEventListener('click', openNewInvoiceSheet);
+    var addProduct = document.getElementById('btn-add-product');
+    if(addProduct) addProduct.addEventListener('click', function(){ openProductSheet(null); });
+    var addCustomer = document.getElementById('btn-add-customer');
+    if(addCustomer) addCustomer.addEventListener('click', function(){ openCustomerSheet(null); });
+
+    app.querySelectorAll('[data-open-invoice]').forEach(function(el){
+      el.addEventListener('click', function(){ detail={type:'invoice', id:el.getAttribute('data-open-invoice')}; render(); });
+    });
+    app.querySelectorAll('[data-open-customer]').forEach(function(el){
+      el.addEventListener('click', function(){ detail={type:'customer', id:el.getAttribute('data-open-customer')}; render(); });
+    });
+    app.querySelectorAll('[data-open-product]').forEach(function(el){
+      el.addEventListener('click', function(){ detail={type:'product', id:el.getAttribute('data-open-product')}; render(); });
+    });
+
+    var back = document.getElementById('btn-back');
+    if(back) back.addEventListener('click', function(){ detail=null; render(); });
+
+    var printBtn = document.getElementById('btn-print-invoice');
+    if(printBtn) printBtn.addEventListener('click', function(){ printInvoice(detail.id); });
+
+    var payBtn = document.getElementById('btn-record-payment');
+    if(payBtn) payBtn.addEventListener('click', function(){ openPaymentSheet(detail.id); });
+
+    var restockBtn = document.getElementById('btn-restock');
+    if(restockBtn) restockBtn.addEventListener('click', function(){ openRestockSheet(detail.id); });
+
+    var delProdBtn = document.getElementById('btn-delete-product');
+    if(delProdBtn) delProdBtn.addEventListener('click', function(){
+      if(confirm('Delete this item from inventory?')){
+        state.products = state.products.filter(function(p){ return p.id!==detail.id; });
+        detail=null; view='inventory'; saveData(); render();
+        showToast('Item deleted');
+      }
+    });
+  }
+
+  // ---------- SHEET FRAMEWORK ----------
+  function openSheet(builder){
+    sheet = builder;
+    render();
+  }
+  function closeSheet(){ sheet=null; stopScanner(); render(); }
+
+  function renderSheet(){
+    var app = document.getElementById('app');
+    var wrap = document.createElement('div');
+    wrap.className = 'overlay';
+    wrap.id = 'overlay';
+    wrap.innerHTML = '<div class="sheet" id="sheet-inner">' + sheet.html() + '</div>';
+    app.appendChild(wrap);
+    wrap.addEventListener('click', function(e){ if(e.target.id==='overlay') closeSheet(); });
+    var closeBtn = document.getElementById('sheet-close');
+    if(closeBtn) closeBtn.addEventListener('click', closeSheet);
+    sheet.attach();
+  }
+
+  // ---------- SETTINGS SHEET ----------
+  function openSettingsSheet(){
+    openSheet({
+      html: function(){
+        return '<div class="sheet-head"><h2>Settings</h2><button class="close" id="sheet-close">&times;</button></div>' +
+          '<label>Shop name</label><input id="set-name" value="'+escapeHtml(state.shopName)+'">' +
+          '<label>Currency symbol</label><input id="set-currency" value="'+escapeHtml(state.currency)+'" maxlength="3">' +
+          '<label>Low stock warning at or below</label><input id="set-lowstock" type="number" class="num-input" value="'+state.lowStock+'">' +
+          '<button class="primary block" id="save-settings" style="margin-top:20px;">Save</button>' +
+          '<div style="border-top:1px solid var(--line);margin-top:22px;padding-top:16px;">' +
+            '<label style="margin-top:0;">Excel</label>' +
+            '<div style="display:flex;flex-direction:column;gap:8px;">' +
+              '<button class="secondary block" id="export-inventory">Export inventory (.xlsx)</button>' +
+              '<button class="secondary block" id="export-invoices">Export invoices (.xlsx)</button>' +
+              '<button class="secondary block" id="import-inventory-btn">Import inventory from Excel</button>' +
+              '<input type="file" id="import-inventory-file" accept=".xlsx,.xls,.csv" style="display:none;">' +
+            '</div>' +
+            '<div class="scan-note" style="text-align:left;margin-top:8px;">Import expects columns Name, SKU, Price, Quantity. Existing SKUs get restocked; new ones are added.</div>' +
+          '</div>' +
+          '<div style="border-top:1px solid var(--line);margin-top:22px;padding-top:16px;">' +
+            '<label style="margin-top:0;">Cloud sync</label>' +
+            (firebaseReady ?
+              ('<div class="scan-note" style="text-align:left;">Connected · Shop ID: <strong style="font-family:IBM Plex Mono,monospace;color:var(--ink);">'+escapeHtml(shopId||'—')+'</strong><br>Share this Shop ID with another device to sync the same data live.</div>')
+              : ('<div class="scan-note" style="text-align:left;">Not connected — this device is saving locally only. Add your Firebase config in the code to enable multi-device sync.</div>')
+            ) +
+          '</div>';
+      },
+      attach: function(){
+        document.getElementById('save-settings').addEventListener('click', function(){
+          state.shopName = document.getElementById('set-name').value.trim() || 'My Shop';
+          state.currency = document.getElementById('set-currency').value.trim() || '$';
+          state.lowStock = parseInt(document.getElementById('set-lowstock').value) || 5;
+          saveData(); closeSheet(); showToast('Settings saved');
+        });
+        document.getElementById('export-inventory').addEventListener('click', exportInventoryXlsx);
+        document.getElementById('export-invoices').addEventListener('click', exportInvoicesXlsx);
+        var importBtn = document.getElementById('import-inventory-btn');
+        var importFile = document.getElementById('import-inventory-file');
+        importBtn.addEventListener('click', function(){ importFile.click(); });
+        importFile.addEventListener('change', function(e){
+          if(e.target.files && e.target.files[0]) importInventoryXlsx(e.target.files[0]);
+        });
+      }
+    });
+  }
+
+  // ---------- EXCEL EXPORT / IMPORT ----------
+  function safeFileBase(){ return (state.shopName||'shop').replace(/[^a-z0-9]/gi,'_'); }
+
+  function exportInventoryXlsx(){
+    if(typeof XLSX==='undefined'){ showToast('Excel library failed to load'); return; }
+    var rows = state.products.map(function(p){
+      return { Name:p.name, SKU:p.sku||'', Price:p.price, Quantity:p.qty };
+    });
+    var ws = XLSX.utils.json_to_sheet(rows);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+    XLSX.writeFile(wb, safeFileBase()+'_inventory.xlsx');
+    showToast('Inventory exported');
+  }
+
+  function exportInvoicesXlsx(){
+    if(typeof XLSX==='undefined'){ showToast('Excel library failed to load'); return; }
+    var rows = [];
+    state.invoices.slice().sort(function(a,b){return a.createdAt-b.createdAt;}).forEach(function(inv){
+      var custName = inv.customerId ? (findCustomer(inv.customerId)||{}).name : 'Walk-in';
+      inv.items.forEach(function(it){
+        rows.push({
+          Invoice: inv.number,
+          Date: new Date(inv.createdAt).toLocaleDateString(),
+          Customer: custName,
+          Status: inv.type==='credit' ? 'Credit' : 'Paid',
+          Item: it.name,
+          Qty: it.qty,
+          Price: it.price,
+          LineTotal: it.qty*it.price
+        });
+      });
+    });
+    var ws = XLSX.utils.json_to_sheet(rows);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Invoices');
+    XLSX.writeFile(wb, safeFileBase()+'_invoices.xlsx');
+    showToast('Invoices exported');
+  }
+
+  function importInventoryXlsx(file){
+    if(typeof XLSX==='undefined'){ showToast('Excel library failed to load'); return; }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var data = new Uint8Array(e.target.result);
+        var wb = XLSX.read(data, {type:'array'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws);
+        var added=0, updated=0;
+        rows.forEach(function(r){
+          var name = r.Name || r.name || r.Item || r.item;
+          if(!name) return;
+          var sku = String(r.SKU || r.sku || r.Barcode || r.barcode || '').trim();
+          var price = parseFloat(r.Price || r.price) || 0;
+          var qty = parseInt(r.Quantity || r.quantity || r.Qty || r.qty) || 0;
+          var existing = sku ? state.products.find(function(p){ return p.sku && p.sku.toLowerCase()===sku.toLowerCase(); }) : null;
+          if(existing){
+            existing.qty += qty;
+            if(price) existing.price = price;
+            updated++;
+          } else {
+            state.products.push({ id:uid(), name:String(name), sku:sku, price:price, qty:qty });
+            added++;
+          }
+        });
+        saveData();
+        closeSheet();
+        view='inventory'; detail=null;
+        render();
+        showToast(added+' added, '+updated+' restocked');
+      }catch(err){
+        showToast('Could not read that file — check the format');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ---------- PRODUCT SHEET (add/edit) ----------
+  function openProductSheet(prefillSku){
+    openSheet({
+      html: function(){
+        return '<div class="sheet-head"><h2>Add item</h2><button class="close" id="sheet-close">&times;</button></div>' +
+          '<label>Name</label><input id="p-name" placeholder="e.g. Rice 5kg bag">' +
+          '<div class="row-2">' +
+          '<div><label>SKU / Barcode</label><input id="p-sku" class="num-input" value="'+escapeHtml(prefillSku||'')+'"></div>' +
+          '<div><label>Price</label><input id="p-price" type="number" step="0.01" class="num-input" placeholder="0.00"></div>' +
+          '</div>' +
+          '<label>Starting quantity</label><input id="p-qty" type="number" class="num-input" placeholder="0">' +
+          '<button class="primary block" id="save-product" style="margin-top:20px;">Save item</button>';
+      },
+      attach: function(){
+        document.getElementById('save-product').addEventListener('click', function(){
+          var name = document.getElementById('p-name').value.trim();
+          if(!name){ showToast('Enter an item name'); return; }
+          var price = parseFloat(document.getElementById('p-price').value) || 0;
+          var qty = parseInt(document.getElementById('p-qty').value) || 0;
+          var sku = document.getElementById('p-sku').value.trim();
+          state.products.push({ id:uid(), name:name, sku:sku, price:price, qty:qty });
+          saveData(); closeSheet(); view='inventory'; render();
+          showToast('Item added');
+        });
+      }
+    });
+  }
+
+  function openRestockSheet(productId){
+    var p = findProduct(productId);
+    if(!p) return;
+    openSheet({
+      html: function(){
+        return '<div class="sheet-head"><h2>Adjust stock</h2><button class="close" id="sheet-close">&times;</button></div>' +
+          '<label>'+escapeHtml(p.name)+' — current qty '+p.qty+'</label>' +
+          '<div class="row-2">' +
+          '<div><label>New quantity</label><input id="r-qty" type="number" class="num-input" value="'+p.qty+'"></div>' +
+          '<div><label>Price</label><input id="r-price" type="number" step="0.01" class="num-input" value="'+p.price+'"></div>' +
+          '</div>' +
+          '<button class="primary block" id="save-restock" style="margin-top:20px;">Save</button>';
+      },
+      attach: function(){
+        document.getElementById('save-restock').addEventListener('click', function(){
+          p.qty = parseInt(document.getElementById('r-qty').value) || 0;
+          p.price = parseFloat(document.getElementById('r-price').value) || 0;
+          saveData(); closeSheet(); render();
+          showToast('Stock updated');
+        });
+      }
+    });
+  }
+
+  // ---------- CUSTOMER SHEET ----------
+  function openCustomerSheet(){
+    openSheet({
+      html: function(){
+        return '<div class="sheet-head"><h2>Add customer</h2><button class="close" id="sheet-close">&times;</button></div>' +
+          '<label>Name</label><input id="c-name" placeholder="e.g. John Mwangi">' +
+          '<label>Phone</label><input id="c-phone" placeholder="Optional">' +
+          '<button class="primary block" id="save-customer" style="margin-top:20px;">Save customer</button>';
+      },
+      attach: function(){
+        document.getElementById('save-customer').addEventListener('click', function(){
+          var name = document.getElementById('c-name').value.trim();
+          if(!name){ showToast('Enter a name'); return; }
+          state.customers.push({ id:uid(), name:name, phone:document.getElementById('c-phone').value.trim(), balance:0 });
+          saveData(); closeSheet(); render();
+          showToast('Customer added');
+        });
+      }
+    });
+  }
+
+  function openPaymentSheet(customerId){
+    var c = findCustomer(customerId);
+    if(!c) return;
+    openSheet({
+      html: function(){
+        return '<div class="sheet-head"><h2>Record payment</h2><button class="close" id="sheet-close">&times;</button></div>' +
+          '<label>'+escapeHtml(c.name)+' owes '+fmt(c.balance)+'</label>' +
+          '<input id="pay-amount" type="number" step="0.01" class="num-input" placeholder="Amount paid">' +
+          '<button class="primary block" id="save-payment" style="margin-top:20px;">Record payment</button>';
+      },
+      attach: function(){
+        document.getElementById('save-payment').addEventListener('click', function(){
+          var amt = parseFloat(document.getElementById('pay-amount').value);
+          if(!amt || amt<=0){ showToast('Enter a valid amount'); return; }
+          c.balance = Math.max(0, (c.balance||0) - amt);
+          saveData(); closeSheet(); render();
+          showToast('Payment recorded');
+        });
+      }
+    });
+  }
+
+  // ---------- NEW INVOICE SHEET ----------
+  var draftInvoice = null;
+  function openNewInvoiceSheet(){
+    draftInvoice = { customerId:null, type:'cash', items:[] };
+    openSheet({
+      html: renderInvoiceSheetHtml,
+      attach: attachInvoiceSheetEvents
+    });
+  }
+
+  function renderInvoiceSheetHtml(){
+    var html = '<div class="sheet-head"><h2>New invoice</h2><button class="close" id="sheet-close">&times;</button></div>';
+
+    html += '<label>Customer</label>';
+    html += '<div class="toggle-group" id="pay-type">' +
+      '<button data-t="cash" class="'+(draftInvoice.type==='cash'?'sel':'')+'">Cash sale</button>' +
+      '<button data-t="credit" class="'+(draftInvoice.type==='credit'?'sel':'')+'">On credit</button>' +
+    '</div>';
+
+    if(draftInvoice.type==='credit'){
+      html += '<div class="search-add" style="margin-top:10px;">' +
+        '<input id="cust-search" placeholder="Search or add customer…" autocomplete="off" value="'+(draftInvoice.customerId? escapeHtml(findCustomer(draftInvoice.customerId).name):'')+'">' +
+        '<div id="cust-suggest"></div>' +
+      '</div>';
+    }
+
+    html += '<label style="margin-top:16px;">Add items</label>';
+    html += '<div class="search-add">' +
+      '<input id="item-search" placeholder="Search product or scan barcode…" autocomplete="off">' +
+      '<div id="item-suggest"></div>' +
+    '</div>';
+
+    html += '<div id="invoice-items" style="margin-top:12px;">' + renderDraftItems() + '</div>';
+
+    var total = draftInvoice.items.reduce(function(s,it){ return s+it.qty*it.price; },0);
+    html += '<div class="total-line"><span class="l">Total</span><span class="v">'+fmt(total)+'</span></div>';
+
+    html += '<button class="primary block" id="save-invoice" style="margin-top:18px;">Save &amp; print</button>';
+    return html;
+  }
+
+  function renderDraftItems(){
+    if(draftInvoice.items.length===0){
+      return '<div class="scan-note">No items added yet.</div>';
+    }
+    return draftInvoice.items.map(function(it,idx){
+      return '<div class="item-line">' +
+        '<div class="info"><div class="n">'+escapeHtml(it.name)+'</div><div class="p">'+fmt(it.price)+' each</div></div>' +
+        '<div class="qty-stepper">' +
+          '<button data-dec="'+idx+'">−</button><span>'+it.qty+'</span><button data-inc="'+idx+'">+</button>' +
+        '</div>' +
+        '<div class="lt">'+fmt(it.qty*it.price)+'</div>' +
+        '<button class="rm" data-rm="'+idx+'">&times;</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  function refreshInvoiceSheet(){
+    var el = document.getElementById('sheet-inner');
+    if(el){ el.innerHTML = renderInvoiceSheetHtml(); attachInvoiceSheetEvents(); }
+  }
+
+  function attachInvoiceSheetEvents(){
+    document.getElementById('sheet-close').addEventListener('click', closeSheet);
+
+    document.querySelectorAll('#pay-type button').forEach(function(b){
+      b.addEventListener('click', function(){
+        draftInvoice.type = b.getAttribute('data-t');
+        if(draftInvoice.type==='cash') draftInvoice.customerId=null;
+        refreshInvoiceSheet();
+      });
+    });
+
+    var custSearch = document.getElementById('cust-search');
+    if(custSearch){
+      custSearch.addEventListener('input', function(){
+        var q = custSearch.value.trim().toLowerCase();
+        var box = document.getElementById('cust-suggest');
+        if(!q){ box.innerHTML=''; return; }
+        var matches = state.customers.filter(function(c){ return c.name.toLowerCase().indexOf(q)>-1; });
+        var html = '<div class="suggest">';
+        matches.slice(0,6).forEach(function(c){
+          html += '<div class="opt" data-pick-cust="'+c.id+'"><span class="n">'+escapeHtml(c.name)+'</span><span class="s">'+fmt(c.balance||0)+' owed</span></div>';
+        });
+        html += '<div class="opt" data-new-cust="1"><span class="n">+ New customer "'+escapeHtml(custSearch.value.trim())+'"</span></div>';
+        html += '</div>';
+        box.innerHTML = html;
+        box.querySelectorAll('[data-pick-cust]').forEach(function(o){
+          o.addEventListener('click', function(){
+            draftInvoice.customerId = o.getAttribute('data-pick-cust');
+            document.getElementById('cust-suggest').innerHTML='';
+            custSearch.value = findCustomer(draftInvoice.customerId).name;
+          });
+        });
+        var nc = box.querySelector('[data-new-cust]');
+        if(nc) nc.addEventListener('click', function(){
+          var name = custSearch.value.trim();
+          if(!name) return;
+          var c = {id:uid(), name:name, phone:'', balance:0};
+          state.customers.push(c);
+          draftInvoice.customerId = c.id;
+          document.getElementById('cust-suggest').innerHTML='';
+        });
+      });
+    }
+
+    var itemSearch = document.getElementById('item-search');
+    itemSearch.addEventListener('input', function(){
+      var q = itemSearch.value.trim().toLowerCase();
+      var box = document.getElementById('item-suggest');
+      if(!q){ box.innerHTML=''; return; }
+      var matches = state.products.filter(function(p){
+        return p.name.toLowerCase().indexOf(q)>-1 || (p.sku||'').toLowerCase().indexOf(q)>-1;
+      });
+      if(matches.length===0){ box.innerHTML = '<div class="suggest"><div class="opt"><span class="s">No matching items</span></div></div>'; return; }
+      var html = '<div class="suggest">';
+      matches.slice(0,8).forEach(function(p){
+        html += '<div class="opt" data-pick-item="'+p.id+'"><span class="n">'+escapeHtml(p.name)+'</span><span class="s">'+fmt(p.price)+' · '+p.qty+' left</span></div>';
+      });
+      html += '</div>';
+      box.innerHTML = html;
+      box.querySelectorAll('[data-pick-item]').forEach(function(o){
+        o.addEventListener('click', function(){
+          addDraftItem(o.getAttribute('data-pick-item'));
+          itemSearch.value=''; box.innerHTML='';
+        });
+      });
+    });
+    itemSearch.addEventListener('keydown', function(e){
+      if(e.key==='Enter'){
+        e.preventDefault();
+        var q = itemSearch.value.trim().toLowerCase();
+        var match = state.products.find(function(p){ return (p.sku||'').toLowerCase()===q; });
+        if(match){ addDraftItem(match.id); itemSearch.value=''; document.getElementById('item-suggest').innerHTML=''; }
+      }
+    });
+
+    bindItemLineEvents();
+
+    document.getElementById('save-invoice').addEventListener('click', commitInvoice);
+  }
+
+  function bindItemLineEvents(){
+    document.querySelectorAll('[data-inc]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var i = parseInt(b.getAttribute('data-inc'));
+        draftInvoice.items[i].qty++;
+        refreshInvoiceSheet();
+      });
+    });
+    document.querySelectorAll('[data-dec]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var i = parseInt(b.getAttribute('data-dec'));
+        draftInvoice.items[i].qty = Math.max(1, draftInvoice.items[i].qty-1);
+        refreshInvoiceSheet();
+      });
+    });
+    document.querySelectorAll('[data-rm]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var i = parseInt(b.getAttribute('data-rm'));
+        draftInvoice.items.splice(i,1);
+        refreshInvoiceSheet();
+      });
+    });
+  }
+
+  function addDraftItem(productId){
+    var p = findProduct(productId);
+    if(!p) return;
+    var existing = draftInvoice.items.find(function(it){ return it.productId===productId; });
+    if(existing){ existing.qty++; }
+    else{ draftInvoice.items.push({ productId:p.id, name:p.name, price:p.price, qty:1 }); }
+    refreshInvoiceSheet();
+  }
+
+  function commitInvoice(){
+    if(draftInvoice.items.length===0){ showToast('Add at least one item'); return; }
+    if(draftInvoice.type==='credit' && !draftInvoice.customerId){ showToast('Pick or add a customer'); return; }
+
+    var total = draftInvoice.items.reduce(function(s,it){ return s+it.qty*it.price; },0);
+    var inv = {
+      id: uid(),
+      number: state.nextInvoiceNo,
+      customerId: draftInvoice.customerId,
+      type: draftInvoice.type,
+      items: draftInvoice.items,
+      total: total,
+      createdAt: Date.now()
+    };
+    state.nextInvoiceNo++;
+    state.invoices.push(inv);
+
+    // decrement stock
+    draftInvoice.items.forEach(function(it){
+      var p = findProduct(it.productId);
+      if(p) p.qty = Math.max(0, p.qty - it.qty);
+    });
+
+    // add to customer balance if credit
+    if(draftInvoice.type==='credit'){
+      var c = findCustomer(draftInvoice.customerId);
+      if(c) c.balance = (c.balance||0) + total;
+    }
+
+    saveData();
+    closeSheet();
+    view='invoices'; detail={type:'invoice', id:inv.id};
+    render();
+    showToast('Invoice #'+inv.number+' saved');
+  }
+
+  // ---------- PRINT ----------
+  function printInvoice(invId){
+    var inv = state.invoices.find(function(i){ return i.id===invId; });
+    if(!inv) return;
+    var custName = inv.customerId ? (findCustomer(inv.customerId)||{}).name : 'Walk-in';
+    document.getElementById('pr-shop').textContent = state.shopName;
+    document.getElementById('pr-meta').textContent = 'Invoice #'+inv.number+' · '+new Date(inv.createdAt).toLocaleString()+' · '+custName;
+    var itemsHtml = '';
+    inv.items.forEach(function(it){
+      itemsHtml += '<div class="pr-row"><span>'+escapeHtml(it.name)+' x'+it.qty+'</span><span>'+fmt(it.qty*it.price)+'</span></div>';
+    });
+    document.getElementById('pr-items').innerHTML = itemsHtml;
+    document.getElementById('pr-total').textContent = fmt(inv.total);
+    document.getElementById('pr-status-row').innerHTML = '<span>Status</span><span>'+(inv.type==='credit'?'ON CREDIT':'PAID')+'</span>';
+    window.print();
+  }
+
+  // ---------- SCANNER ----------
+  var scannerStream = null;
+  var scannerRAF = null;
+  var barcodeDetector = null;
+
+  function openScanSheet(){
+    openSheet({
+      html: function(){
+        return '<div class="sheet-head"><h2>Scan barcode</h2><button class="close" id="sheet-close">&times;</button></div>' +
+          '<div class="scanbox" id="scanbox"><video id="scan-video" autoplay playsinline muted></video></div>' +
+          '<div class="scan-note" id="scan-status">Starting camera…</div>' +
+          '<label>Or enter code manually</label>' +
+          '<div class="row-2">' +
+          '<div><input id="manual-code" class="num-input" placeholder="SKU or barcode"></div>' +
+          '<div><button class="secondary block" id="manual-go">Look up</button></div>' +
+          '</div>';
+      },
+      attach: function(){
+        document.getElementById('manual-go').addEventListener('click', function(){
+          handleScannedCode(document.getElementById('manual-code').value.trim());
+        });
+        document.getElementById('manual-code').addEventListener('keydown', function(e){
+          if(e.key==='Enter'){ handleScannedCode(e.target.value.trim()); }
+        });
+        startScanner();
+      }
+    });
+  }
+
+  function startScanner(){
+    var statusEl = document.getElementById('scan-status');
+    if(!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia){
+      statusEl.textContent = 'Camera not available — enter the code manually below.';
+      return;
+    }
+    if(!('BarcodeDetector' in window)){
+      statusEl.textContent = 'Live scanning isn\'t supported in this browser — enter the code manually below.';
+    }
+    navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } }).then(function(stream){
+      scannerStream = stream;
+      var video = document.getElementById('scan-video');
+      if(!video) { stream.getTracks().forEach(function(t){t.stop();}); return; }
+      video.srcObject = stream;
+      if('BarcodeDetector' in window){
+        statusEl.textContent = 'Point the camera at a barcode…';
+        try{
+          barcodeDetector = new window.BarcodeDetector();
+        }catch(e){ barcodeDetector = new window.BarcodeDetector({formats:['ean_13','ean_8','code_128','upc_a','upc_e','qr_code']}); }
+        scanLoop(video, statusEl);
+      }
+    }).catch(function(err){
+      statusEl.textContent = 'Camera access denied — enter the code manually below.';
+    });
+  }
+
+  function scanLoop(video, statusEl){
+    if(!document.getElementById('scan-video')){ return; } // sheet closed
+    barcodeDetector.detect(video).then(function(codes){
+      if(codes && codes.length>0){
+        handleScannedCode(codes[0].rawValue);
+        return;
+      }
+      scannerRAF = requestAnimationFrame(function(){ scanLoop(video, statusEl); });
+    }).catch(function(){
+      scannerRAF = requestAnimationFrame(function(){ scanLoop(video, statusEl); });
+    });
+  }
+
+  function stopScanner(){
+    if(scannerRAF) cancelAnimationFrame(scannerRAF);
+    scannerRAF = null;
+    barcodeDetector = null;
+    if(scannerStream){
+      scannerStream.getTracks().forEach(function(t){ t.stop(); });
+      scannerStream = null;
+    }
+  }
+
+  function handleScannedCode(code){
+    if(!code) return;
+    stopScanner();
+    var p = state.products.find(function(x){ return (x.sku||'').toLowerCase()===code.toLowerCase(); });
+    closeSheet();
+    if(p){
+      detail = {type:'product', id:p.id};
+      view = 'inventory';
+      render();
+      showToast('Found: '+p.name);
+    } else {
+      openProductSheet(code);
+      showToast('No item with that code — add it');
+    }
+  }
+
+  // ---------- INIT ----------
+  loadData();
+
+})();
+</script>
+</body>
+</html>

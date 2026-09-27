@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>Greenfield Secondary School — Enter Scores</title>
+<style>
+  :root {
+    --navy: #58CC02;
+    --navy-light: #46A302;
+    --gold: #FFC800;
+    --cream: #F7F7F7;
+    --card: #FFFFFF;
+    --border: #E5E5E5;
+    --text: #3C3C3C;
+    --text-soft: #777777;
+    --pass: #58A700;
+    --pass-bg: #D7FFB8;
+    --fail: #EA2B2B;
+    --fail-bg: #FFDFE0;
+    --warn: #CE8E00;
+    --warn-bg: #FFF4D1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'Nunito', Arial, sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+
+  .wrap { max-width: 900px; margin: 0 auto; }
+  .wrap.narrow { max-width: 420px; }
+
+  .school-header { text-align: center; margin-bottom: 22px; }
+  .school-header .crest {
+    width: 44px; height: 44px;
+    background: var(--navy); color: var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 16px;
+    margin: 0 auto 10px;
+  }
+  .school-header h1 { font-size: 20px; margin: 0; font-weight: 800; font-family: "Baloo 2", sans-serif; }
+  .school-header p { font-size: 12px; color: var(--text-soft); margin: 4px 0 0; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    font-size: 13px;
+  }
+  .topbar .who { color: var(--text-soft); }
+  .topbar button {
+    background: none;
+    border: none;
+    color: var(--navy);
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .mode-toggle {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    background: var(--cream);
+    border-radius: 18px;
+    padding: 4px;
+  }
+  .mode-toggle button {
+    flex: 1;
+    padding: 9px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-soft);
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .mode-toggle button.active {
+    background: var(--navy);
+    color: #fff;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    align-items: end;
+  }
+  @media (max-width: 700px) {
+    .filters { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  label {
+    font-size: 11px;
+    color: var(--text-soft);
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 9px 10px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--cream);
+    color: var(--text);
+    font-family: inherit;
+  }
+  input:focus, select:focus { outline: 2px solid var(--navy); outline-offset: 1px; }
+
+  button.primary {
+    padding: 11px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Baloo 2', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border: none;
+    border-radius: 12px;
+    background: var(--navy);
+    color: #fff;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: 0 4px 0 var(--navy-light);
+    transition: transform 0.05s, box-shadow 0.05s;
+  }
+  button.primary:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--navy-light); }
+  button.primary:hover { filter: brightness(1.05); }
+  button.primary:disabled { background: #CCCCCC; box-shadow: 0 4px 0 #AAAAAA; cursor: not-allowed; }
+
+  button.ghost {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: bold;
+    border: 1px solid var(--navy);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--navy);
+    cursor: pointer;
+  }
+
+  .load-btn-row { margin-top: 12px; }
+  .load-btn-row button.primary { width: auto; padding: 10px 18px; }
+
+  .error-msg {
+    font-size: 13px;
+    color: var(--fail);
+    background: var(--fail-bg);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--text-soft);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: bold;
+  }
+  .badge-draft { background: var(--warn-bg); color: var(--warn); }
+  .badge-ready { background: var(--pass-bg); color: var(--pass); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    color: var(--text-soft);
+    font-weight: normal;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  th.num, td.num { text-align: right; }
+  td { padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+
+  td .student-name { font-weight: bold; }
+  td .student-flag {
+    font-size: 10px;
+    color: var(--warn);
+    margin-top: 2px;
+  }
+
+  .score-input {
+    width: 60px;
+    padding: 6px 8px;
+    text-align: right;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .score-input:disabled {
+    background: var(--cream);
+    color: var(--text-soft);
+    border-style: dashed;
+  }
+
+  .total-cell { font-weight: bold; }
+
+  .remark-pass { color: var(--pass); font-weight: bold; font-size: 11px; }
+  .remark-fail { color: var(--fail); font-weight: bold; font-size: 11px; }
+
+  .grade-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 11px;
+  }
+  .grade-A, .grade-B { background: var(--pass-bg); color: var(--pass); }
+  .grade-C, .grade-D, .grade-E { background: var(--warn-bg); color: var(--warn); }
+  .grade-F { background: var(--fail-bg); color: var(--fail); }
+
+  .save-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--navy);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 18px;
+    font-size: 13px;
+    display: none;
+  }
+
+  .empty-note {
+    text-align: center;
+    color: var(--text-soft);
+    font-size: 13px;
+    padding: 30px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="wrap narrow" id="loginWrap">
+  <div class="school-header">
+    <div class="crest">GS</div>
+    <h1>Greenfield Secondary School</h1>
+    <p>Teacher login</p>
+  </div>
+  <div class="card">
+    <div class="error-msg" id="loginError"></div>
+    <label for="teacherEmail">Email</label>
+    <input type="email" id="teacherEmail" placeholder="e.g. adeyemi@school.com" />
+    <label for="teacherPassword" style="margin-top:12px;">Password</label>
+    <div style="position:relative; margin-bottom:16px;">
+      <input type="password" id="teacherPassword" style="padding-right:64px;" />
+      <button type="button" onclick="togglePasswordVisibility('teacherPassword', this)" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:auto; padding:4px 10px; font-size:10px; background:var(--cream); color:var(--navy); box-shadow:none; border:1px solid var(--border); border-radius:8px; text-transform:none; font-family:'Nunito',Arial,sans-serif; font-weight:700;">Show</button>
+    </div>
+    <button class="primary" onclick="login()">Log in</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="wrap" id="appWrap" style="display:none;">
+
+  <div class="school-header">
+    <div class="crest">GS</div>
+    <h1>Greenfield Secondary School</h1>
+    <p>Teacher score entry</p>
+  </div>
+
+  <div class="card">
+    <div class="topbar">
+      <span class="who" id="whoAmI"></span>
+      <button onclick="logout()">Log out</button>
+    </div>
+
+    <div class="mode-toggle">
+      <button id="midTermTab" class="active" onclick="switchMode('midterm')">Mid-term (Assignment + Test)</button>
+      <button id="fullTermTab" onclick="switchMode('fullterm')">Full term (Exam)</button>
+    </div>
+
+    <div class="filters">
+      <div>
+        <label for="assignmentSelect">Class &amp; subject</label>
+        <select id="assignmentSelect"></select>
+      </div>
+      <div>
+        <label for="termSelect">Term</label>
+        <select id="termSelect" onchange="checkDeadlineCountdown()">
+          <option>First Term</option>
+          <option>Second Term</option>
+          <option>Third Term</option>
+        </select>
+      </div>
+      <div>
+        <label for="sessionInput">Session</label>
+        <input type="text" id="sessionInput" value="2025/2026" onchange="checkDeadlineCountdown()" oninput="checkDeadlineCountdown()" />
+      </div>
+    </div>
+
+    <div class="load-btn-row">
+      <button class="primary" onclick="loadRoster()">Load class</button>
+    </div>
+
+    <p id="deadlineCountdown" style="font-size:12px; color:var(--warn); margin:12px 0 0; display:none;"></p>
+  </div>
+
+  <div class="card" id="rosterCard" style="display:none;">
+    <div class="status-bar">
+      <span id="scoredCount">0 of 0 students scored</span>
+      <span class="badge badge-draft" id="statusBadge">Draft</span>
+    </div>
+
+    <table>
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+
+    <div class="save-row">
+      <button class="ghost" onclick="saveScores('draft')">Save draft</button>
+      <button class="primary" style="width:auto;" onclick="saveScores('final')">Submit final</button>
+    </div>
+  </div>
+
+  <div class="empty-note" id="emptyNote" style="display:none;">
+    No students found for that class yet.
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API_BASE = window.location.origin.includes('4000') ? window.location.origin : 'http://localhost:4000';
+  let mode = 'midterm'; // 'midterm' | 'fullterm'
+  let currentRoster = [];
+  let myAssignments = []; // [{ class, subject_id, subject_name }]
+  let teacher = null;
+  let countdownInterval; // declared early — boot() below can run immediately on page load and needs this ready
+
+  // Restore session if already logged in this browser tab session
+  const saved = sessionStorage.getItem('resultpro_teacher');
+  if (saved) {
+    teacher = JSON.parse(saved);
+    boot();
+  }
+
+  function showToast(message) {
+    const t = document.getElementById('toast');
+    t.textContent = message;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 2500);
+  }
+
+  function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === "password") { input.type = "text"; btn.textContent = "Hide"; }
+    else { input.type = "password"; btn.textContent = "Show"; }
+  }
+
+  async function login() {
+    const email = document.getElementById('teacherEmail').value.trim();
+    const password = document.getElementById('teacherPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+
+    if (!email || !password) {
+      errEl.textContent = 'Please enter both email and password.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+
+      teacher = data.teacher;
+      sessionStorage.setItem('resultpro_teacher', JSON.stringify(teacher));
+      boot();
+    } catch (err) {
+      errEl.textContent = err.message || 'Login failed.';
+      errEl.style.display = 'block';
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem('resultpro_teacher');
+    teacher = null;
+    document.getElementById('appWrap').style.display = 'none';
+    document.getElementById('loginWrap').style.display = 'block';
+  }
+
+  async function boot() {
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'block';
+    document.getElementById('whoAmI').textContent = `Logged in as ${teacher.name}`;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/my-subjects?teacher_id=${teacher.id}`);
+      const data = await res.json();
+      myAssignments = data.assignments || [];
+
+      const select = document.getElementById('assignmentSelect');
+      if (myAssignments.length === 0) {
+        select.innerHTML = `<option value="">No subjects assigned yet</option>`;
+        return;
+      }
+      select.innerHTML = myAssignments
+        .map((a, i) => `<option value="${i}">${a.class} — ${a.subject_name}</option>`)
+        .join('');
+      checkDeadlineCountdown();
+    } catch (err) {
+      showToast('Could not load your assigned subjects.');
+    }
+  }
+
+  function checkDeadlineCountdown() {
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
+    if (!session) return;
+    updateDeadlineCountdown(term, session);
+  }
+
+  function switchMode(newMode) {
+    mode = newMode;
+    document.getElementById('midTermTab').classList.toggle('active', mode === 'midterm');
+    document.getElementById('fullTermTab').classList.toggle('active', mode === 'fullterm');
+    document.getElementById('rosterCard').style.display = 'none';
+    document.getElementById('emptyNote').style.display = 'none';
+  }
+
+  function getFilters() {
+    const idx = document.getElementById('assignmentSelect').value;
+    const assignment = myAssignments[idx];
+    return {
+      className: assignment ? assignment.class : null,
+      subjectId: assignment ? assignment.subject_id : null,
+      term: document.getElementById('termSelect').value,
+      session: document.getElementById('sessionInput').value.trim(),
+    };
+  }
+
+  async function loadRoster() {
+    const { className, subjectId, term, session } = getFilters();
+    if (!className || !subjectId) { showToast('You have no subjects assigned yet.'); return; }
+    if (!session) { showToast('Please enter a session.'); return; }
+
+    updateDeadlineCountdown(term, session);
+
+    const endpoint = mode === 'midterm' ? 'roster' : 'fullterm-roster';
+    const url = `${API_BASE}/api/teacher/${endpoint}?class=${encodeURIComponent(className)}&subject_id=${subjectId}&term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}&teacher_id=${teacher.id}`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load class');
+
+      currentRoster = data.roster || [];
+      if (currentRoster.length === 0) {
+        document.getElementById('rosterCard').style.display = 'none';
+        document.getElementById('emptyNote').style.display = 'block';
+        return;
+      }
+      document.getElementById('emptyNote').style.display = 'none';
+      renderRoster();
+    } catch (err) {
+      showToast(err.message || 'Could not load class.');
+    }
+  }
+
+  function renderRoster() {
+    document.getElementById('rosterCard').style.display = 'block';
+    const head = document.getElementById('tableHead');
+    const body = document.getElementById('tableBody');
+
+    if (mode === 'midterm') {
+      head.innerHTML = `
+        <tr>
+          <th>Student</th>
+          <th class="num">Assignment (15)</th>
+          <th class="num">Test (15)</th>
+          <th class="num">Total</th>
+          <th class="num">Remark</th>
+        </tr>`;
+      body.innerHTML = currentRoster.map((s, i) => `
+        <tr data-idx="${i}">
+          <td><span class="student-name">${s.name}</span></td>
+          <td class="num"><input class="score-input" type="number" min="0" max="15"
+              value="${s.assignment_score ?? ''}" oninput="updateMidTermRow(${i})" id="assignment-${i}" /></td>
+          <td class="num"><input class="score-input" type="number" min="0" max="15"
+              value="${s.test_score ?? ''}" oninput="updateMidTermRow(${i})" id="test-${i}" /></td>
+          <td class="num total-cell" id="total-${i}">${s.total_score ?? '—'}</td>
+          <td class="num"><span id="remark-${i}" class="${s.remark === 'Pass' ? 'remark-pass' : s.remark === 'Fail' ? 'remark-fail' : ''}">${s.remark ?? '—'}</span></td>
+        </tr>`).join('');
+    } else {
+      head.innerHTML = `
+        <tr>
+          <th>Student</th>
+          <th class="num">CA (30)</th>
+          <th class="num">Exam (70)</th>
+          <th class="num">Total</th>
+          <th class="num">Grade</th>
+        </tr>`;
+      body.innerHTML = currentRoster.map((s, i) => `
+        <tr data-idx="${i}">
+          <td>
+            <span class="student-name">${s.name}</span>
+            ${s.needs_manual_ca ? '<div class="student-flag">No mid-term record</div>' : ''}
+          </td>
+          <td class="num">
+            ${s.needs_manual_ca
+              ? `<input class="score-input" type="number" min="0" max="30" value="${s.ca ?? ''}" oninput="updateFullTermRow(${i})" id="ca-${i}" />`
+              : `<input class="score-input" type="number" value="${s.ca ?? 0}" disabled />`}
+          </td>
+          <td class="num"><input class="score-input" type="number" min="0" max="70"
+              value="${s.exam_score ?? ''}" oninput="updateFullTermRow(${i})" id="exam-${i}" /></td>
+          <td class="num total-cell" id="total-${i}">${s.total_score ?? '—'}</td>
+          <td class="num" id="grade-${i}">${s.grade ? `<span class="grade-pill grade-${s.grade}">${s.grade}</span>` : '—'}</td>
+        </tr>`).join('');
+    }
+
+    updateScoredCount();
+  }
+
+  function updateMidTermRow(i) {
+    const assignment = document.getElementById(`assignment-${i}`).value;
+    const test = document.getElementById(`test-${i}`).value;
+    const hasAny = assignment !== '' || test !== '';
+    const total = hasAny ? (Number(assignment) || 0) + (Number(test) || 0) : null;
+
+    currentRoster[i].assignment_score = assignment === '' ? null : Number(assignment);
+    currentRoster[i].test_score = test === '' ? null : Number(test);
+    currentRoster[i].total_score = total;
+
+    document.getElementById(`total-${i}`).textContent = total ?? '—';
+    const remark = total === null ? '—' : (total >= 15 ? 'Pass' : 'Fail');
+    const remarkEl = document.getElementById(`remark-${i}`);
+    remarkEl.textContent = remark;
+    remarkEl.className = remark === 'Pass' ? 'remark-pass' : remark === 'Fail' ? 'remark-fail' : '';
+
+    updateScoredCount();
+  }
+
+  function getGrade(total) {
+    if (total === null) return null;
+    if (total >= 75) return 'A';
+    if (total >= 65) return 'B';
+    if (total >= 55) return 'C';
+    if (total >= 45) return 'D';
+    if (total >= 40) return 'E';
+    return 'F';
+  }
+
+  function updateFullTermRow(i) {
+    const caInput = document.getElementById(`ca-${i}`);
+    const ca = caInput ? (caInput.value === '' ? null : Number(caInput.value)) : currentRoster[i].ca;
+    const examInput = document.getElementById(`exam-${i}`);
+    const exam = examInput.value === '' ? null : Number(examInput.value);
+
+    currentRoster[i].manual_ca_override = currentRoster[i].needs_manual_ca ? ca : null;
+    currentRoster[i].exam_score = exam;
+
+    const total = (ca !== null && exam !== null) ? ca + exam : null;
+    currentRoster[i].total_score = total;
+
+    document.getElementById(`total-${i}`).textContent = total ?? '—';
+    const grade = getGrade(total);
+    document.getElementById(`grade-${i}`).innerHTML = grade ? `<span class="grade-pill grade-${grade}">${grade}</span>` : '—';
+
+    updateScoredCount();
+  }
+
+  function updateScoredCount() {
+    const scored = currentRoster.filter(s => s.total_score !== null && s.total_score !== undefined).length;
+    document.getElementById('scoredCount').textContent = `${scored} of ${currentRoster.length} students scored`;
+  }
+
+  async function updateDeadlineCountdown(term, session) {
+    clearInterval(countdownInterval);
+    const el = document.getElementById('deadlineCountdown');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/term-settings?term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}`);
+      const data = await res.json();
+      const deadline = data.settings?.teacher_deadline;
+
+      if (!deadline) {
+        el.style.display = 'none';
+        return;
+      }
+
+      const deadlineDate = new Date(deadline);
+      el.style.display = 'block';
+
+      function tick() {
+        const diff = deadlineDate - new Date();
+        if (diff <= 0) {
+          el.textContent = `⏰ Deadline has passed (was ${deadlineDate.toLocaleString()})`;
+          clearInterval(countdownInterval);
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const mins = Math.floor((diff / (1000 * 60)) % 60);
+        const secs = Math.floor((diff / 1000) % 60);
+        el.textContent = `⏳ Score submission deadline: ${days}d ${hours}h ${mins}m ${secs}s remaining`;
+      }
+      tick();
+      countdownInterval = setInterval(tick, 1000); // tick every second so it visibly counts down
+    } catch (err) {
+      el.style.display = 'none';
+    }
+  }
+
+  async function saveScores(status) {
+    const { className, subjectId, term, session } = getFilters();
+    const endpoint = mode === 'midterm' ? 'midterm-scores' : 'fullterm-scores';
+
+    const scores = mode === 'midterm'
+      ? currentRoster.map(s => ({ student_id: s.student_id, assignment_score: s.assignment_score, test_score: s.test_score, status }))
+      : currentRoster.map(s => ({ student_id: s.student_id, exam_score: s.exam_score, manual_ca_override: s.manual_ca_override, status }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacher_id: teacher.id, class: className, subject_id: subjectId, term, session, scores }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      document.getElementById('statusBadge').textContent = status === 'final' ? 'Final' : 'Draft';
+      document.getElementById('statusBadge').className = `badge ${status === 'final' ? 'badge-ready' : 'badge-draft'}`;
+      showToast(status === 'final' ? 'Scores submitted.' : 'Draft saved.');
+    } catch (err) {
+      showToast(err.message || 'Could not save scores.');
+    }
+  }
+</script>
+</body>
+</html>
