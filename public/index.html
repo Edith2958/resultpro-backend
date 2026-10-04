@@ -1,2038 +1,677 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Ledger — Invoices, Stock &amp; Debts</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Arvo:wght@400;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- FIREBASE: fill in your config in the script below, under FIREBASE CONFIG -->
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>Greenfield Secondary School — Check Your Result</title>
 <style>
-  :root{
-    --paper:#F6F1E7;
-    --card:#FFFDF8;
-    --line:#DDD3BD;
-    --line-soft:#EAE2D0;
-    --ink:#22281F;
-    --ink-soft:#5B6156;
-    --green:#2F4B3C;
-    --green-soft:#E4EAE3;
-    --red:#A73B3B;
-    --red-soft:#F3E3E1;
-    --amber:#B8862E;
-    --amber-soft:#F5EBD9;
-    --radius:3px;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--paper);
-    color:var(--ink);
-    font-family:'Inter',sans-serif;
-    -webkit-font-smoothing:antialiased;
-    min-height:100vh;
-  }
-  .num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
-  h1,h2,h3{font-family:'Arvo',serif;font-weight:700;margin:0;}
-
-  .app-shell{
-    max-width:480px;
-    margin:0 auto;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    position:relative;
-    background:var(--paper);
+  :root {
+    --navy: #58CC02;
+    --navy-light: #46A302;
+    --gold: #FFC800;
+    --cream: #F7F7F7;
+    --card: #FFFFFF;
+    --border: #E5E5E5;
+    --text: #3C3C3C;
+    --text-soft: #777777;
+    --pass: #58A700;
+    --pass-bg: #D7FFB8;
+    --fail: #EA2B2B;
+    --fail-bg: #FFDFE0;
+    --warn: #CE8E00;
+    --warn-bg: #FFF4D1;
   }
 
-  /* HEADER */
-  header.top{
-    padding:18px 18px 14px;
-    border-bottom:2px solid var(--ink);
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
-  }
-  header.top .brand{display:flex;flex-direction:column;gap:2px;}
-  header.top h1{font-size:21px;letter-spacing:-0.01em;}
-  header.top .date{font-size:11px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
-  header.top button.gear{
-    background:none;border:1px solid var(--line);border-radius:50%;
-    width:34px;height:34px;display:flex;align-items:center;justify-content:center;
-    color:var(--ink-soft);cursor:pointer;
-  }
-  header.top button.gear:active{background:var(--line-soft);}
+  * { box-sizing: border-box; }
 
-  main{flex:1;overflow-y:auto;padding:14px 18px 90px;}
-
-  /* SECTION HEADER ROW */
-  .section-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-  .section-row h2{font-size:17px;}
-  .totals-strip{
-    display:flex;gap:10px;margin-bottom:16px;
-  }
-  .totals-strip .stat{
-    flex:1;border:1px solid var(--line);border-radius:var(--radius);
-    padding:10px 12px;background:var(--card);
-  }
-  .totals-strip .stat .label{font-size:10.5px;color:var(--ink-soft);}
-  .totals-strip .stat .value{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;margin-top:2px;}
-
-  /* LEDGER ROWS (list) */
-  .ledger{border-top:1px solid var(--line);}
-  .row{
-    display:flex;justify-content:space-between;align-items:center;
-    padding:13px 2px;border-bottom:1px solid var(--line-soft);
-    cursor:pointer;
-  }
-  .row:active{background:var(--line-soft);}
-  .row .left{display:flex;flex-direction:column;gap:2px;min-width:0;}
-  .row .title{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .row .sub{font-size:11.5px;color:var(--ink-soft);}
-  .row .right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;padding-left:10px;}
-  .row .amount{font-family:'IBM Plex Mono',monospace;font-size:14.5px;font-weight:600;}
-  .pill{
-    font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;letter-spacing:0.02em;
-  }
-  .pill.paid{background:var(--green-soft);color:var(--green);}
-  .pill.credit{background:var(--red-soft);color:var(--red);}
-  .pill.partial{background:var(--amber-soft);color:var(--amber);}
-  .pill.voided{background:var(--line-soft);color:var(--ink-soft);}
-  .pill.ok{background:var(--green-soft);color:var(--green);}
-  .pill.low{background:var(--amber-soft);color:var(--amber);}
-  .pill.out{background:var(--red-soft);color:var(--red);}
-
-  .empty{
-    text-align:center;padding:50px 20px;color:var(--ink-soft);
-  }
-  .empty h3{font-family:'Inter',sans-serif;font-size:14.5px;color:var(--ink);margin-bottom:5px;}
-  .empty p{font-size:12.5px;margin:0;}
-
-  /* BOTTOM NAV */
-  nav.bottom{
-    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-    width:100%;max-width:480px;
-    background:var(--card);border-top:2px solid var(--ink);
-    display:flex;
-    padding-bottom:env(safe-area-inset-bottom);
-  }
-  nav.bottom button{
-    flex:1;background:none;border:none;padding:9px 4px 8px;
-    display:flex;flex-direction:column;align-items:center;gap:3px;
-    color:var(--ink-soft);cursor:pointer;font-family:'Inter',sans-serif;font-size:10px;font-weight:600;
-  }
-  nav.bottom button.active{color:var(--ink);}
-  nav.bottom button svg{width:20px;height:20px;}
-  nav.bottom button.active svg{stroke:var(--ink);}
-
-  /* BUTTONS */
-  button.primary{
-    background:var(--ink);color:var(--paper);border:none;border-radius:var(--radius);
-    padding:12px 16px;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
-  }
-  button.primary:active{opacity:0.85;}
-  button.secondary{
-    background:none;color:var(--ink);border:1px solid var(--ink);border-radius:var(--radius);
-    padding:11px 16px;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;cursor:pointer;
-  }
-  button.danger{color:var(--red);border-color:var(--red);}
-  button.block{width:100%;}
-  .fab{
-    position:fixed;bottom:78px;left:50%;
-    transform:translateX(calc(-50% + 190px));
-    width:50px;height:50px;border-radius:50%;
-    background:var(--ink);color:var(--paper);border:none;
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 3px 10px rgba(0,0,0,0.25);cursor:pointer;
-    font-size:24px;
+  body {
+    margin: 0;
+    font-family: 'Nunito', Arial, sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
   }
 
-  /* MODAL / SHEET */
-  .overlay{
-    position:fixed;inset:0;background:rgba(34,40,31,0.45);
-    display:flex;align-items:flex-end;justify-content:center;z-index:50;
-  }
-  .sheet{
-    background:var(--paper);width:100%;max-width:480px;
-    max-height:92vh;overflow-y:auto;border-radius:14px 14px 0 0;
-    padding:18px 18px calc(24px + env(safe-area-inset-bottom));
-    animation:slideup 0.22s ease-out;
-  }
-  @keyframes slideup{from{transform:translateY(24px);opacity:0.4;}to{transform:translateY(0);opacity:1;}}
-  .sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-  .sheet-head h2{font-size:18px;}
-  .sheet-head button.close{background:none;border:none;color:var(--ink-soft);font-size:22px;cursor:pointer;line-height:1;padding:4px;}
+  .wrap { width: 100%; max-width: 480px; }
 
-  label{display:block;font-size:11.5px;color:var(--ink-soft);margin:12px 0 5px;font-weight:600;}
-  input,select,textarea{
-    width:100%;border:1px solid var(--line);border-radius:var(--radius);
-    padding:10px 11px;font-family:'Inter',sans-serif;font-size:14.5px;background:var(--card);color:var(--ink);
-  }
-  input.num-input{font-family:'IBM Plex Mono',monospace;}
-  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ink);}
-  .row-2{display:flex;gap:10px;}
-  .row-2 > div{flex:1;}
-
-  .item-line{
-    display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:var(--radius);
-    padding:9px 10px;margin-bottom:8px;background:var(--card);
-  }
-  .item-line .info{flex:1;min-width:0;}
-  .item-line .info .n{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .item-line .info .p{font-size:11px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
-  .qty-stepper{display:flex;align-items:center;gap:6px;}
-  .qty-stepper button{
-    width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--paper);
-    font-size:15px;cursor:pointer;color:var(--ink);
-  }
-  .qty-stepper span{width:22px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13.5px;}
-  .item-line .lt{width:62px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600;}
-  .item-line .rm{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:2px 4px;}
-
-  .total-line{display:flex;justify-content:space-between;padding-top:12px;margin-top:6px;border-top:2px solid var(--ink);}
-  .total-line .l{font-family:'Arvo',serif;font-size:15px;}
-  .total-line .v{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;}
-
-  .toggle-group{display:flex;gap:8px;}
-  .toggle-group button{
-    flex:1;padding:9px;border:1px solid var(--line);border-radius:var(--radius);
-    background:var(--card);color:var(--ink-soft);font-weight:600;font-size:13px;cursor:pointer;
-  }
-  .toggle-group button.sel{background:var(--ink);color:var(--paper);border-color:var(--ink);}
-
-  .search-add{position:relative;}
-  .suggest{
-    position:absolute;top:100%;left:0;right:0;background:var(--card);
-    border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);
-    max-height:220px;overflow-y:auto;z-index:10;box-shadow:0 6px 14px rgba(0,0,0,0.08);
-  }
-  .suggest .opt{padding:10px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer;display:flex;justify-content:space-between;}
-  .suggest .opt:active{background:var(--line-soft);}
-  .suggest .opt .n{font-size:13.5px;}
-  .suggest .opt .s{font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
-
-  .scanbox{
-    background:#111;border-radius:var(--radius);overflow:hidden;position:relative;
-    aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;margin-bottom:10px;
-  }
-  .scanbox video{width:100%;height:100%;object-fit:cover;}
-  .scan-note{font-size:11.5px;color:var(--ink-soft);text-align:center;padding:6px 0;}
-
-  /* DETAIL VIEW */
-  .detail-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
-  .detail-card .dl-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;}
-  .detail-card .dl-row .k{color:var(--ink-soft);}
-  .detail-card .dl-row .v{font-family:'IBM Plex Mono',monospace;font-weight:600;}
-  .back-btn{background:none;border:none;color:var(--ink-soft);font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;margin-bottom:12px;padding:2px;}
-
-  /* PRINT AREA (hidden on screen) */
-  #print-area{display:none;}
-
-  @media print{
-    body *{visibility:hidden;}
-    #print-area, #print-area *{visibility:visible;}
-    #print-area{
-      display:block;position:absolute;top:0;left:0;width:72mm;
-      font-family:'IBM Plex Mono',monospace;font-size:11px;color:#000;padding:6mm;
-    }
-    #print-area .pr-shop{font-family:'Arvo',serif;font-size:15px;font-weight:700;text-align:center;}
-    #print-area .pr-sub{text-align:center;font-size:9.5px;margin-bottom:6px;}
-    #print-area hr{border:none;border-top:1px dashed #000;margin:6px 0;}
-    #print-area .pr-row{display:flex;justify-content:space-between;font-size:10.5px;padding:2px 0;}
-    #print-area .pr-tot{display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:4px;}
-    #print-area .pr-foot{text-align:center;font-size:9.5px;margin-top:10px;}
+  .school-header {
+    text-align: center;
+    margin-bottom: 28px;
   }
 
-  .toast{
-    position:fixed;bottom:96px;left:50%;transform:translateX(-50%);
-    background:var(--ink);color:var(--paper);padding:9px 18px;border-radius:20px;
-    font-size:12.5px;font-weight:600;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.2s;
+  .school-header .crest {
+    width: 48px; height: 48px;
+    background: var(--navy);
+    color: var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 18px;
+    margin: 0 auto 12px;
+    font-family: 'Nunito', Arial, sans-serif;
   }
-  .toast.show{opacity:1;}
+
+  .school-header h1 {
+    font-size: 22px;
+    margin: 0;
+    font-weight: 800;
+    font-family: 'Baloo 2', sans-serif;
+    letter-spacing: 0.3px;
+  }
+
+  .school-header p {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text-soft);
+    margin: 4px 0 0;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px 24px;
+    margin-bottom: 20px;
+  }
+
+  .card h2 {
+    font-size: 16px;
+    font-weight: normal;
+    margin: 0 0 18px;
+    font-family: Arial, sans-serif;
+  }
+
+  label {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: var(--text-soft);
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 14px;
+    background: var(--cream);
+    color: var(--text);
+  }
+
+  input:focus, select:focus {
+    outline: 2px solid var(--navy);
+    outline-offset: 1px;
+  }
+
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 14px;
+    background: var(--navy);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 0 var(--navy-light);
+    transition: transform 0.05s, box-shadow 0.05s;
+  }
+
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--navy-light); }
+  button:hover { filter: brightness(1.05); }
+  button:disabled { background: #CCCCCC; box-shadow: 0 4px 0 #AAAAAA; cursor: not-allowed; }
+
+  button.secondary {
+    background: transparent;
+    color: var(--navy);
+    border: 2px solid var(--navy);
+    box-shadow: none;
+    margin-top: 10px;
+  }
+  button.secondary:active { transform: none; }
+
+  .error-msg {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--fail);
+    background: var(--fail-bg);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  #resultView { display: none; }
+
+  .student-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .student-line .name {
+    font-size: 15px;
+    margin: 0;
+  }
+
+  .student-line .meta {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: var(--text-soft);
+    margin: 2px 0 0;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .stat-box {
+    background: var(--cream);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+
+  .stat-box .label {
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    color: var(--text-soft);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .stat-box .value {
+    font-size: 16px;
+    margin: 3px 0 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    margin-bottom: 18px;
+  }
+
+  th {
+    text-align: left;
+    color: var(--text-soft);
+    font-weight: normal;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th.num, td.num { text-align: right; }
+
+  td {
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .grade-pill {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 11px;
+  }
+
+  .grade-A, .grade-B { background: var(--pass-bg); color: var(--pass); }
+  .grade-C, .grade-D, .grade-E { background: #FFF4D1; color: #CE8E00; }
+  .grade-F { background: var(--fail-bg); color: var(--fail); }
+
+  .comments-block {
+    font-family: Arial, sans-serif;
+  }
+
+  .comments-block .comment-label {
+    font-size: 11px;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: 0 0 4px;
+  }
+
+  .comments-block p.comment-text {
+    font-size: 13px;
+    margin: 0 0 14px;
+    font-family: 'Nunito', Arial, sans-serif;
+  }
+
+  .loading, .empty-state {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--text-soft);
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .wrap { max-width: 100%; }
+    #loginView, #loadingView, #emptyState, button { display: none !important; }
+    .card { border: none; padding: 0; }
+  }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div class="app-shell" id="app"></div>
-<div class="toast" id="toast"></div>
+  <div class="school-header">
+    <div class="crest">GS</div>
+    <h1>Greenfield Secondary School</h1>
+    <p>Student result portal</p>
+  </div>
 
-<div id="print-area">
-  <img id="pr-logo" src="" alt="" style="max-height:48px;max-width:120px;margin:0 auto 4px;display:none;">
-  <div class="pr-shop" id="pr-shop"></div>
-  <div class="pr-sub" id="pr-meta"></div>
-  <hr>
-  <div id="pr-items"></div>
-  <hr>
-  <div class="pr-tot"><span>TOTAL</span><span id="pr-total"></span></div>
-  <div class="pr-row" id="pr-status-row"></div>
-  <div class="pr-row" id="pr-balance-row"></div>
-  <div class="pr-row" id="pr-soldby-row"></div>
-  <div id="pr-qr" style="width:90px;margin:8px auto 2px;"></div>
-  <div id="pr-qr-caption" style="text-align:center;font-size:8.5px;display:none;">Scan for a WhatsApp copy</div>
-  <div class="pr-foot">Thank you</div>
+  <!-- LOGIN VIEW -->
+  <div class="card" id="loginView">
+    <h2>Check your result</h2>
+
+    <div class="error-msg" id="loginError"></div>
+
+    <label for="admissionNo">Admission number</label>
+    <input type="text" id="admissionNo" placeholder="e.g. 245" />
+
+    <label for="surname">Surname</label>
+    <input type="text" id="surname" placeholder="e.g. Johnson" />
+
+    <label for="resultType">Which result</label>
+    <select id="resultType" style="margin-bottom:14px;" onchange="togglePinField()">
+      <option value="fullterm">Full term result</option>
+      <option value="midterm">Mid-term result</option>
+    </select>
+
+    <div id="pinFieldWrap">
+      <label for="pinCode">Result PIN</label>
+      <input type="text" id="pinCode" placeholder="e.g. 482-193-627" style="margin-bottom:14px;" />
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="termSelect">Term</label>
+        <select id="termSelect" onchange="checkReleaseCountdown()">
+          <option>First Term</option>
+          <option>Second Term</option>
+          <option>Third Term</option>
+        </select>
+      </div>
+      <div>
+        <label for="sessionInput">Session</label>
+        <input type="text" id="sessionInput" placeholder="2025/2026" value="2025/2026" onchange="checkReleaseCountdown()" oninput="checkReleaseCountdown()" />
+      </div>
+    </div>
+
+    <p id="releaseCountdown" style="font-family:'Nunito',Arial,sans-serif; font-size:12px; color:var(--warn); margin:0 0 14px; display:none; font-weight:700;"></p>
+
+    <button id="loginBtn" onclick="checkResult()">View result</button>
+  </div>
+
+  <!-- LOADING -->
+  <div class="card" id="loadingView" style="display:none;">
+    <p class="loading">Fetching result…</p>
+  </div>
+
+  <!-- RESULT VIEW -->
+  <div class="card" id="resultView">
+    <div class="student-line">
+      <div class="avatar" id="studentAvatar">--</div>
+      <div>
+        <p class="name" id="studentName">—</p>
+        <p class="meta" id="studentMeta">—</p>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-box">
+        <p class="label" id="statTotalLabel">Total score</p>
+        <p class="value" id="statTotal">—</p>
+      </div>
+      <div class="stat-box">
+        <p class="label" id="statAverageLabel">Average</p>
+        <p class="value" id="statAverage">—</p>
+      </div>
+      <div class="stat-box">
+        <p class="label" id="statPositionLabel">Class position</p>
+        <p class="value" id="statPosition">—</p>
+      </div>
+      <div class="stat-box">
+        <p class="label" id="statAttendanceLabel">Attendance</p>
+        <p class="value" id="statAttendance">—</p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th class="num">CA</th>
+          <th class="num">Exam</th>
+          <th class="num">Total</th>
+          <th class="num">Highest</th>
+          <th class="num">Pos</th>
+          <th class="num">Grade</th>
+        </tr>
+      </thead>
+      <tbody id="subjectsBody"></tbody>
+    </table>
+
+    <div class="comments-block" id="commentsBlock"></div>
+
+    <div style="display:flex; gap:8px;">
+      <button class="secondary" onclick="window.print()" style="flex:1;">Print / Save as PDF</button>
+      <button class="secondary" onclick="backToLogin()" style="flex:1;">Check another result</button>
+    </div>
+  </div>
+
+  <div class="empty-state" id="emptyState" style="display:none;">
+    No result found for that term and session yet.
+  </div>
+
 </div>
 
 <script>
-(function(){
-  "use strict";
+  // Change this if your backend runs somewhere other than localhost:4000
+  const API_BASE = window.location.origin; // always same-origin — this server serves both the pages and the API
+  let releaseCountdownInterval; // declared early — togglePinField() below runs immediately on page load and needs this ready
 
-  // ---------- STATE ----------
-  function blankShopState(){
-    return {
-      shopName: "My Shop",
-      currency: "$",
-      lowStock: 5,
-      products: [],
-      customers: [],
-      invoices: [],
-      nextInvoiceNo: 1001,
-      roles: {},
-      staffNames: {}
-    };
+  function getInitials(name) {
+    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   }
-  function staffName(email){
-    if(!email) return '';
-    if(state.staffNames && state.staffNames[email]) return state.staffNames[email];
-    return email.split('@')[0];
+
+  function togglePinField() {
+    const isFullTerm = document.getElementById('resultType').value === 'fullterm';
+    document.getElementById('pinFieldWrap').style.display = isFullTerm ? 'block' : 'none';
+    checkReleaseCountdown();
   }
-  var state = blankShopState();
-  var view = "invoices"; // invoices | inventory | debts
-  var sheet = null; // current open sheet descriptor
-  var detail = null; // {type:'invoice'|'customer', id}
-  var loaded = false;
+  togglePinField(); // set correct initial state on page load
 
-  // ---------- FIREBASE CONFIG ----------
-  // Get these values from Firebase Console > Project settings > General > Your apps > SDK setup and config
-  var firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
-  var db = null;
-  var auth = null;
-  var firebaseReady = false;
-  var currentUser = null;
-  var shopId = null; // which Firestore document this device is currently synced to
-  var userShops = []; // list of {id, name} shops this signed-in user belongs to
-  var unsubscribe = null;
-  var suppressNextSnapshot = false;
+  async function checkReleaseCountdown() {
+    clearInterval(releaseCountdownInterval);
+    const el = document.getElementById('releaseCountdown');
+    const isFullTerm = document.getElementById('resultType').value === 'fullterm';
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
 
-  try{
-    if(firebaseConfig.apiKey !== "YOUR_API_KEY" && typeof firebase !== 'undefined'){
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
-      auth = firebase.auth();
-      firebaseReady = true;
+    if (!isFullTerm || !session) {
+      el.style.display = 'none';
+      return;
     }
-  }catch(e){ firebaseReady = false; }
 
-  // ---------- AUTH ----------
-  async function signUp(email, password){
-    try{
-      await auth.createUserWithEmailAndPassword(email, password);
-    }catch(e){ showToast(authErrorMessage(e)); }
-  }
-  async function signIn(email, password){
-    try{
-      await auth.signInWithEmailAndPassword(email, password);
-    }catch(e){ showToast(authErrorMessage(e)); }
-  }
-  async function sendReset(email){
-    try{
-      await auth.sendPasswordResetEmail(email);
-      showToast('Reset email sent — check your inbox');
-    }catch(e){ showToast(authErrorMessage(e)); }
-  }
-  function signOutUser(){
-    if(unsubscribe) unsubscribe();
-    unsubscribe = null;
-    shopId = null;
-    auth.signOut();
-  }
-  function authErrorMessage(e){
-    var code = e && e.code || '';
-    if(code.indexOf('wrong-password')>-1 || code.indexOf('invalid-credential')>-1) return 'Wrong email or password';
-    if(code.indexOf('user-not-found')>-1) return 'No account with that email';
-    if(code.indexOf('email-already-in-use')>-1) return 'That email already has an account — sign in instead';
-    if(code.indexOf('weak-password')>-1) return 'Password should be at least 6 characters';
-    if(code.indexOf('invalid-email')>-1) return 'That email address looks invalid';
-    return 'Something went wrong — try again';
-  }
+    try {
+      const res = await fetch(`${API_BASE}/api/term-settings?term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}`);
+      const data = await res.json();
+      const releaseAt = data.settings?.result_release_at;
 
-  // ---------- STORAGE ----------
-  // Remembers which Shop ID this device should sync to (not the shop data itself, just the pointer).
-  async function rememberShopId(id){
-    shopId = id;
-    try{ await window.storage.set('shop-id', id, false); }catch(e){}
-  }
-  async function recallShopId(){
-    try{
-      var res = await window.storage.get('shop-id', false);
-      return res && res.value ? res.value : null;
-    }catch(e){ return null; }
-  }
+      if (!releaseAt || new Date(releaseAt) <= new Date()) {
+        el.style.display = 'none';
+        return;
+      }
 
-  async function loadData(){
-    if(firebaseReady){
-      auth.onAuthStateChanged(async function(user){
-        currentUser = user;
-        if(!user){
-          shopId = null; userShops = [];
-          if(unsubscribe){ unsubscribe(); unsubscribe = null; }
-          loaded = true; render(); // show sign-in gate
+      const releaseDate = new Date(releaseAt);
+      el.style.display = 'block';
+
+      function tick() {
+        const diff = releaseDate - new Date();
+        if (diff <= 0) {
+          el.textContent = `🎉 Results are now available!`;
+          clearInterval(releaseCountdownInterval);
           return;
         }
-        await listMyShops();
-        var remembered = await recallShopId();
-        if(remembered && userShops.some(function(s){ return s.id===remembered; })){
-          subscribeToShop(remembered);
-        } else {
-          shopId = null;
-          loaded = true; render(); // show the shop picker
-        }
-      });
-      return;
-    }
-    // Local-only fallback (no Firebase configured yet)
-    try{
-      var res = await window.storage.get('shop-data', false);
-      if(res && res.value){
-        var parsed = JSON.parse(res.value);
-        state = Object.assign(state, parsed);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const mins = Math.floor((diff / (1000 * 60)) % 60);
+        const secs = Math.floor((diff / 1000) % 60);
+        el.textContent = `⏳ Results open in ${days}d ${hours}h ${mins}m ${secs}s`;
       }
-    }catch(e){ /* no data yet */ }
-    loaded = true;
-    render();
-  }
-
-  async function listMyShops(){
-    if(!firebaseReady || !currentUser) { userShops = []; return; }
-    try{
-      var snap = await db.collection('shops').where('allowedEmails', 'array-contains', currentUser.email).get();
-      userShops = snap.docs.map(function(d){ return { id: d.id, name: (d.data().shopName || d.id) }; });
-    }catch(e){
-      console.error('listMyShops error:', e);
-      userShops = [];
+      tick();
+      releaseCountdownInterval = setInterval(tick, 1000);
+    } catch (err) {
+      el.style.display = 'none';
     }
   }
 
-  async function deleteShop(){
-    if(!shopId) return;
-    var id = shopId;
-    if(unsubscribe){ unsubscribe(); unsubscribe = null; }
-    try{
-      await db.collection('shops').doc(id).delete();
-      showToast('Shop deleted');
-    }catch(e){
-      console.error('Delete shop failed:', e);
-      showToast('Could not delete shop: '+(e&&e.code?e.code:'permission denied'));
-      subscribeToShop(id); // re-subscribe since delete failed
+  function showError(message) {
+    const el = document.getElementById('loginError');
+    el.textContent = message;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('loginError').style.display = 'none';
+  }
+
+  async function checkResult() {
+    hideError();
+    const admissionNo = document.getElementById('admissionNo').value.trim();
+    const surname = document.getElementById('surname').value.trim();
+    const term = document.getElementById('termSelect').value;
+    const session = document.getElementById('sessionInput').value.trim();
+    const resultType = document.getElementById('resultType').value; // 'fullterm' | 'midterm'
+    const pinCode = document.getElementById('pinCode').value.trim();
+
+    if (!admissionNo || !surname || !session) {
+      showError('Please fill in admission number, surname and session.');
       return;
     }
-    shopId = null;
-    state = blankShopState();
-    await listMyShops();
-    render();
-  }
+    if (resultType === 'fullterm' && !pinCode) {
+      showError('Please enter your result PIN to view the full-term result.');
+      return;
+    }
 
-  async function removeMember(email){
-    if(currentUser && email===currentUser.email){ showToast("You can't remove yourself"); return; }
-    state.allowedEmails = (state.allowedEmails||[]).filter(function(e){ return e!==email; });
-    if(state.roles) delete state.roles[email];
-    await saveData();
-    showToast(email+' removed from this shop');
-  }
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('loadingView').style.display = 'block';
 
-  function switchShop(){
-    if(unsubscribe){ unsubscribe(); unsubscribe = null; }
-    shopId = null;
-    listMyShops().then(function(){ render(); });
-  }
+    try {
+      // Step 1: log in / verify student
+      const loginRes = await fetch(`${API_BASE}/api/student/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admission_no: admissionNo, surname }),
+      });
+      const loginData = await loginRes.json();
 
-  function subscribeToShop(id){
-    if(unsubscribe) unsubscribe();
-    unsubscribe = db.collection('shops').doc(id).onSnapshot(function(doc){
-      if(suppressNextSnapshot){ suppressNextSnapshot = false; }
-      if(doc.exists){
-        state = Object.assign(state, doc.data());
+      if (!loginRes.ok) {
+        throw new Error(loginData.error || 'Could not find that student.');
+      }
+
+      const student = loginData.student;
+
+      // Step 2: fetch the result — full term or mid-term, depending on what was picked
+      const endpoint = resultType === 'midterm' ? 'midterm-result' : 'result';
+      const pinParam = resultType === 'fullterm' ? `&pin_code=${encodeURIComponent(pinCode)}` : '';
+      const resultRes = await fetch(
+        `${API_BASE}/api/student/${endpoint}?student_id=${student.id}&term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}${pinParam}`
+      );
+      const resultData = await resultRes.json();
+
+      document.getElementById('loadingView').style.display = 'none';
+
+      // Results haven't been released yet — show the release date instead of a generic empty state
+      if (resultRes.status === 403 && resultData.result_release_at) {
+        const releaseDate = new Date(resultData.result_release_at);
+        showError(`Results aren't released yet. They'll be available from ${releaseDate.toLocaleString()}.`);
+        document.getElementById('loginView').style.display = 'block';
+        return;
+      }
+
+      // Fee hold — different message, points the student to the accounts office
+      if (resultRes.status === 403 && resultData.fee_hold) {
+        showError(resultData.error);
+        document.getElementById('loginView').style.display = 'block';
+        return;
+      }
+
+      // Any other blocked check (invalid PIN, PIN belongs to someone else, PIN exhausted,
+      // no PIN supplied) — show the specific message from the server instead of a generic one.
+      if (resultRes.status === 403 && resultData.error) {
+        showError(resultData.error);
+        document.getElementById('loginView').style.display = 'block';
+        return;
+      }
+
+      if (!resultRes.ok || !resultData.subjects || resultData.subjects.length === 0) {
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('loginView').style.display = 'block';
+        return;
+      }
+
+      if (resultType === 'midterm') {
+        renderMidTermResult(resultData);
       } else {
-        // First device to use this Shop ID — start from a clean slate (not whatever
-        // shop was previously loaded on this device) and make the creator the first allowed user.
-        state = Object.assign(blankShopState(), { allowedEmails: [currentUser.email], roles: { } });
-        state.roles[currentUser.email] = 'owner';
-        suppressNextSnapshot = true;
-        db.collection('shops').doc(id).set(state).then(function(){
-          listMyShops();
-        }).catch(function(err){
-          console.error('Shop creation failed:', err);
-          showToast('Could not create shop: ' + (err && err.message ? err.message : 'permission denied'));
-        });
+        renderResult(resultData);
       }
-      loaded = true;
-      render();
-    }, function(err){
-      console.error('Firestore subscribe error:', err);
-      showToast('Sync error: ' + (err && err.code ? err.code : 'check access or connection'));
-      loaded = true; render();
-    });
-  }
-
-  async function saveData(){
-    if(firebaseReady && shopId){
-      try{
-        suppressNextSnapshot = true;
-        await db.collection('shops').doc(shopId).set(state);
-      }catch(e){
-        showToast("Couldn't sync to cloud — try again");
-      }
-      return;
-    }
-    try{
-      await window.storage.set('shop-data', JSON.stringify(state), false);
-    }catch(e){
-      showToast("Couldn't save — try again");
+    } catch (err) {
+      document.getElementById('loadingView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'block';
+      showError(err.message || 'Something went wrong. Please try again.');
     }
   }
 
-  async function connectToShop(id){
-    id = id.trim();
-    if(!id){ showToast('Enter a Shop ID'); return; }
-    await rememberShopId(id);
-    subscribeToShop(id);
-  }
+  function renderResult(data) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultView').style.display = 'block';
 
-  async function inviteTeammate(email, role){
-    email = email.trim().toLowerCase();
-    if(!email){ showToast('Enter an email'); return; }
-    if(!state.allowedEmails) state.allowedEmails = [];
-    if(!state.roles) state.roles = {};
-    // Self-heal: if this shop predates roles, make sure the current signed-in
-    // user (who must be the de-facto owner to be inviting anyone) is recorded as one.
-    if(Object.keys(state.roles).length===0){ state.roles[currentUser.email] = 'owner'; }
-    if(state.allowedEmails.indexOf(email) === -1){
-      state.allowedEmails.push(email);
-      state.roles[email] = (role==='owner') ? 'owner' : 'staff';
-      await saveData();
-      showToast(email+' invited as '+(state.roles[email])+ ' — they can now sign up and join');
+    const avatarEl = document.getElementById('studentAvatar');
+    if (data.student.photo_url) {
+      avatarEl.innerHTML = `<img src="${API_BASE}${data.student.photo_url}" alt="${data.student.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
     } else {
-      showToast('Already invited');
+      avatarEl.textContent = getInitials(data.student.name);
     }
-  }
+    document.getElementById('studentName').textContent = data.student.name;
+    document.getElementById('studentMeta').textContent =
+      `${data.student.class} · Admission no. ${data.student.admission_no} · ${data.term}, ${data.session}`;
 
-  async function setMemberRole(email, role){
-    if(!state.roles) state.roles = {};
-    if(Object.keys(state.roles).length===0){ state.roles[currentUser.email] = 'owner'; }
-    state.roles[email] = role;
-    await saveData();
-    showToast(email+' is now '+role);
-  }
+    document.getElementById('statTotalLabel').textContent = 'Total score';
+    document.getElementById('statAverageLabel').textContent = 'Average';
+    document.getElementById('statPositionLabel').textContent = 'Class position';
+    document.getElementById('statAttendanceLabel').textContent = 'Attendance';
+    document.getElementById('statTotal').textContent = `${data.summary.total_score} / ${data.summary.max_obtainable}`;
+    document.getElementById('statAverage').textContent = `${data.summary.average}%`;
+    document.getElementById('statPosition').textContent = `${data.summary.class_position} of ${data.summary.class_size}`;
+    document.getElementById('statAttendance').textContent = data.attendance
+      ? `${data.attendance.present} / ${data.attendance.total_days}`
+      : 'Not recorded';
 
-  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-  function fmt(n){
-    var v = Math.round((n||0)*100)/100;
-    var neg = v<0; v = Math.abs(v);
-    var parts = v.toFixed(2).split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return (neg?'-':'') + state.currency + parts.join('.');
-  }
-  function todayStr(){
-    var d = new Date();
-    return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  }
-
-  function showToast(msg){
-    var t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(function(){ t.classList.remove('show'); }, 1800);
-  }
-
-  // ---------- ICONS ----------
-  var ICONS = {
-    invoices: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10v18l-3-2-2 2-2-2-3 2V3z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>',
-    inventory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/></svg>',
-    debts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12h6M12 9v6"/></svg>',
-    scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><line x1="6" y1="12" x2="18" y2="12"/></svg>',
-    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9c.2.5.7.9 1.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
-    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'
-  };
-
-  // ---------- DERIVED ----------
-  function outstandingTotal(){
-    return state.customers.reduce(function(s,c){ return s + (c.balance||0); }, 0);
-  }
-  function stockValue(){
-    return state.products.reduce(function(s,p){ return s + p.qty*p.price; }, 0);
-  }
-  function lowStockCount(){
-    return state.products.filter(function(p){ return p.qty <= (state.lowStock) && p.qty > 0; }).length;
-  }
-
-  // ---------- RENDER ROOT ----------
-  function render(){
-    var app = document.getElementById('app');
-    if(!loaded){ app.innerHTML = '<div class="empty" style="padding-top:120px;">Loading…</div>'; return; }
-
-    if(firebaseReady && !currentUser){ renderAuthGate(app); return; }
-    if(firebaseReady && !shopId){ renderShopPickerGate(app); return; }
-
-    var html = '';
-    html += renderHeader();
-    html += '<main>' + renderMain() + '</main>';
-    html += renderNav();
-    if(view==='invoices') html += '<button class="fab" id="fab-new" aria-label="New invoice">+</button>';
-
-    app.innerHTML = html;
-    attachRootEvents();
-    if(sheet) renderSheet();
-  }
-
-  function renderAuthGate(app){
-    var mode = window._authMode || 'signin'; // 'signin' | 'signup'
-    app.innerHTML =
-      '<div style="padding:60px 24px;text-align:center;">' +
-        '<h1 style="font-size:22px;margin-bottom:8px;">'+(mode==='signup'?'Create your account':'Sign in')+'</h1>' +
-        '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:22px;">'+(mode==='signup'?'You\'ll use this to access your shop\'s data from any device.':'Enter the email and password you signed up with.')+'</p>' +
-        '<label style="text-align:left;">Email</label>' +
-        '<input id="auth-email" type="email" placeholder="you@business.com">' +
-        '<label style="text-align:left;">Password</label>' +
-        '<input id="auth-password" type="password" placeholder="At least 6 characters">' +
-        '<button class="primary block" id="auth-submit" style="margin-top:16px;">'+(mode==='signup'?'Create account':'Sign in')+'</button>' +
-        '<p style="font-size:12.5px;margin-top:16px;">' +
-          (mode==='signup'
-            ? 'Already have an account? <a href="#" id="auth-switch" style="color:var(--ink);">Sign in</a>'
-            : 'New here? <a href="#" id="auth-switch" style="color:var(--ink);">Create an account</a>') +
-        '</p>' +
-        (mode==='signin' ? '<p style="font-size:12px;margin-top:6px;"><a href="#" id="auth-forgot" style="color:var(--ink-soft);">Forgot password?</a></p>' : '') +
-      '</div>';
-    document.getElementById('auth-submit').addEventListener('click', function(){
-      var email = document.getElementById('auth-email').value.trim();
-      var pw = document.getElementById('auth-password').value;
-      if(!email || !pw){ showToast('Enter email and password'); return; }
-      if(mode==='signup') signUp(email, pw); else signIn(email, pw);
+    const tbody = document.getElementById('subjectsBody');
+    tbody.innerHTML = '';
+    data.subjects.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${s.subject_name}</td>
+        <td class="num">${s.ca}</td>
+        <td class="num">${s.exam}</td>
+        <td class="num"><strong>${s.total}</strong></td>
+        <td class="num">${s.highest ?? '—'}</td>
+        <td class="num">${s.position ?? '—'}</td>
+        <td class="num"><span class="grade-pill grade-${s.grade}">${s.grade || '—'}</span></td>
+      `;
+      tbody.appendChild(tr);
     });
-    document.getElementById('auth-switch').addEventListener('click', function(e){
-      e.preventDefault();
-      window._authMode = mode==='signup' ? 'signin' : 'signup';
-      render();
-    });
-    var forgot = document.getElementById('auth-forgot');
-    if(forgot) forgot.addEventListener('click', function(e){
-      e.preventDefault();
-      var email = document.getElementById('auth-email').value.trim();
-      if(!email){ showToast('Type your email above first'); return; }
-      sendReset(email);
-    });
-  }
 
-  function renderShopPickerGate(app){
-    var listHtml = '';
-    if(userShops.length > 0){
-      listHtml += '<div class="ledger" style="text-align:left;margin-bottom:18px;">';
-      userShops.forEach(function(s){
-        listHtml += '<div class="row" data-pick-shop="'+escapeHtml(s.id)+'">' +
-          '<div class="left"><div class="title">'+escapeHtml(s.name)+'</div><div class="sub">'+escapeHtml(s.id)+'</div></div>' +
-          '<div class="right">→</div>' +
-        '</div>';
-      });
-      listHtml += '</div>';
-    }
-    app.innerHTML =
-      '<div style="padding:50px 24px 30px;text-align:center;">' +
-        '<h1 style="font-size:22px;margin-bottom:8px;">'+(userShops.length? 'Choose a shop' : 'Connect this device')+'</h1>' +
-        '<p style="font-size:13px;color:var(--ink-soft);margin-bottom:20px;">Signed in as <strong>'+escapeHtml(currentUser.email)+'</strong></p>' +
-        listHtml +
-        '<label style="text-align:left;">'+(userShops.length? 'Or create a new shop' : 'Shop ID')+'</label>' +
-        '<input id="gate-shopid" placeholder="e.g. mercy-store-2026" style="text-align:center;">' +
-        '<button class="primary block" id="gate-connect" style="margin-top:16px;">'+(userShops.length? 'Create shop' : 'Connect')+'</button>' +
-        '<p style="font-size:12px;margin-top:16px;"><a href="#" id="gate-signout" style="color:var(--ink-soft);">Sign out</a></p>' +
-      '</div>';
-    app.querySelectorAll('[data-pick-shop]').forEach(function(el){
-      el.addEventListener('click', function(){
-        connectToShop(el.getAttribute('data-pick-shop'));
-      });
-    });
-    document.getElementById('gate-connect').addEventListener('click', function(){
-      connectToShop(document.getElementById('gate-shopid').value);
-    });
-    document.getElementById('gate-signout').addEventListener('click', function(e){
-      e.preventDefault();
-      signOutUser();
-    });
-  }
-
-  function renderHeader(){
-    var logoImg = state.shopLogo ? '<img src="'+state.shopLogo+'" alt="" style="height:32px;width:32px;object-fit:contain;border-radius:6px;margin-right:9px;">' : '';
-    return '<header class="top">' +
-      '<div class="brand" style="flex-direction:row;align-items:center;">'+logoImg+'<div><h1>'+escapeHtml(state.shopName)+'</h1><div class="date">'+todayStr()+'</div></div></div>' +
-      '<button class="gear" id="btn-settings">'+ICONS.gear+'</button>' +
-    '</header>';
-  }
-
-  function renderNav(){
-    function btn(id,label){
-      return '<button data-view="'+id+'" class="'+(view===id?'active':'')+'">'+ICONS[id]+'<span>'+label+'</span></button>';
-    }
-    return '<nav class="bottom">' +
-      btn('invoices','Invoices') + btn('inventory','Stock') + (isOwner() ? btn('debts','Debts') : '') +
-      '<button id="btn-scan">'+ICONS.scan+'<span>Scan</span></button>' +
-    '</nav>';
-  }
-
-  function renderMain(){
-    if(view==='debts' && !isOwner()){ view = 'invoices'; detail = null; }
-    if(detail) return renderDetail();
-    if(view==='invoices') return renderInvoicesList();
-    if(view==='inventory') return renderInventoryList();
-    if(view==='debts') return renderDebtsList();
-    return '';
-  }
-
-  // ---------- INVOICES LIST ----------
-  function renderInvoicesList(){
-    var invs = state.invoices.slice().sort(function(a,b){ return b.createdAt-a.createdAt; });
-    var todayCount = invs.filter(function(i){ return !i.voided && sameDay(i.createdAt, Date.now()); }).length;
-    var todaySum = invs.filter(function(i){ return !i.voided && sameDay(i.createdAt, Date.now()); }).reduce(function(s,i){return s+i.total;},0);
-
-    var html = '<div class="totals-strip">' +
-      '<div class="stat"><div class="label">Today</div><div class="value">'+fmt(todaySum)+'</div></div>' +
-      '<div class="stat"><div class="label">Outstanding</div><div class="value">'+fmt(outstandingTotal())+'</div></div>' +
-    '</div>';
-
-    html += '<div class="section-row"><h2>Invoices</h2>'+(isOwner() ? '<button class="secondary" id="btn-summary" style="padding:6px 12px;font-size:12.5px;">Summary</button>' : '')+'</div>';
-
-    if(invs.length===0){
-      html += '<div class="empty"><h3>No invoices yet</h3><p>Tap + to create your first invoice.</p></div>';
-      return html;
-    }
-
-    html += '<div class="ledger">';
-    invs.forEach(function(inv){
-      var custName = invoiceCustName(inv);
-      html += '<div class="row" data-open-invoice="'+inv.id+'" style="'+(inv.voided?'opacity:0.5;':'')+'">' +
-        '<div class="left"><div class="title">'+escapeHtml(custName||'Walk-in')+'</div>' +
-        '<div class="sub">#'+inv.number+' · '+new Date(inv.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</div></div>' +
-        '<div class="right"><div class="amount">'+fmt(inv.total)+'</div>' +
-        '<span class="pill '+invPillClass(inv)+'">'+invPillLabel(inv)+'</span></div>' +
-      '</div>';
-    });
-    html += '</div>';
-    return html;
-  }
-
-  function sameDay(ts, ts2){
-    var a=new Date(ts), b=new Date(ts2);
-    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
-  }
-
-  // ---------- INVENTORY LIST ----------
-  function renderInventoryList(){
-    var html = '<div class="totals-strip">' +
-      '<div class="stat"><div class="label">Items</div><div class="value">'+state.products.length+'</div></div>' +
-      '<div class="stat"><div class="label">Stock value</div><div class="value">'+fmt(stockValue())+'</div></div>' +
-    '</div>';
-    html += '<div class="section-row"><h2>Inventory</h2>'+(isOwner() ? '<button class="secondary" id="btn-add-product" style="padding:6px 12px;font-size:12.5px;">+ Item</button>' : '')+'</div>';
-
-    if(state.products.length===0){
-      html += '<div class="empty"><h3>No items yet</h3><p>Add products to start tracking stock.</p></div>';
-      return html;
-    }
-
-    var sorted = state.products.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
-    html += '<div class="ledger">';
-    sorted.forEach(function(p){
-      var pillClass = p.qty<=0 ? 'out' : (p.qty<=state.lowStock ? 'low' : 'ok');
-      var pillText = p.qty<=0 ? 'Out' : (p.qty<=state.lowStock ? 'Low' : 'In stock');
-      html += '<div class="row" data-open-product="'+p.id+'">' +
-        '<div class="left"><div class="title">'+escapeHtml(p.name)+'</div><div class="sub">SKU '+escapeHtml(p.sku||'—')+' · '+fmt(p.price)+'</div></div>' +
-        '<div class="right"><div class="amount">'+p.qty+'</div><span class="pill '+pillClass+'">'+pillText+'</span></div>' +
-      '</div>';
-    });
-    html += '</div>';
-    return html;
-  }
-
-  // ---------- DEBTS LIST ----------
-  function renderDebtsList(){
-    var owing = state.customers.filter(function(c){ return (c.balance||0) > 0; }).sort(function(a,b){ return b.balance-a.balance; });
-    var html = '<div class="totals-strip">' +
-      '<div class="stat"><div class="label">Customers owing</div><div class="value">'+owing.length+'</div></div>' +
-      '<div class="stat"><div class="label">Total owed</div><div class="value">'+fmt(outstandingTotal())+'</div></div>' +
-    '</div>';
-    html += '<div class="section-row"><h2>Debts</h2><button class="secondary" id="btn-add-customer" style="padding:6px 12px;font-size:12.5px;">+ Customer</button></div>';
-
-    if(owing.length===0){
-      html += '<div class="empty"><h3>All settled</h3><p>No customers currently owe you money.</p></div>';
+    const commentsBlock = document.getElementById('commentsBlock');
+    if (data.comments && (data.comments.form_teacher || data.comments.principal)) {
+      commentsBlock.innerHTML = `
+        ${data.comments.form_teacher ? `
+          <p class="comment-label">Form teacher's comment</p>
+          <p class="comment-text">${data.comments.form_teacher}</p>` : ''}
+        ${data.comments.principal ? `
+          <p class="comment-label">Principal's comment</p>
+          <p class="comment-text">${data.comments.principal}</p>` : ''}
+      `;
     } else {
-      html += '<div class="ledger">';
-      owing.forEach(function(c){
-        html += '<div class="row" data-open-customer="'+c.id+'">' +
-          '<div class="left"><div class="title">'+escapeHtml(c.name)+'</div><div class="sub">'+(c.debtSince ? ('Owing '+daysAgo(c.debtSince)) : escapeHtml(c.phone||'No phone'))+'</div></div>' +
-          '<div class="right"><div class="amount">'+fmt(c.balance)+'</div><span class="pill credit">Owing</span></div>' +
-        '</div>';
-      });
-      html += '</div>';
+      commentsBlock.innerHTML = '';
     }
-    return html;
   }
 
-  // ---------- DETAIL VIEWS ----------
-  function renderDetail(){
-    if(detail.type==='invoice') return renderInvoiceDetail();
-    if(detail.type==='customer') return renderCustomerDetail();
-    if(detail.type==='product') return renderProductDetail();
-    return '';
-  }
+  function renderMidTermResult(data) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultView').style.display = 'block';
 
-  function renderInvoiceDetail(){
-    var inv = state.invoices.find(function(i){ return i.id===detail.id; });
-    if(!inv){ detail=null; return renderInvoicesList(); }
-    var custName = invoiceCustName(inv);
-    var html = '<button class="back-btn" id="btn-back">'+ICONS.back+' Back</button>';
-    html += '<div class="detail-card">' +
-      '<div class="dl-row"><span class="k">Invoice</span><span class="v">#'+inv.number+'</span></div>' +
-      '<div class="dl-row"><span class="k">Customer</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(custName||'Walk-in')+'</span></div>' +
-      '<div class="dl-row"><span class="k">Date</span><span class="v">'+new Date(inv.createdAt).toLocaleString()+'</span></div>' +
-      '<div class="dl-row"><span class="k">Status</span><span class="v" style="font-family:Inter,sans-serif;">'+invStatusLong(inv)+'</span></div>' +
-      (inv.soldBy ? '<div class="dl-row"><span class="k">Sold by</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(staffName(inv.soldBy))+'</span></div>' : '') +
-    '</div>';
-
-    if(inv.voided){
-      html += '<div class="scan-note" style="text-align:left;background:var(--line-soft);padding:10px 12px;border-radius:3px;">This invoice was voided on '+new Date(inv.voidedAt).toLocaleString()+'. Stock and any debt it added have been reversed.</div>';
-    }
-
-    html += '<div class="section-row"><h2 style="font-size:14px;">Items</h2></div>';
-    html += '<div class="ledger">';
-    inv.items.forEach(function(it){
-      html += '<div class="row" style="cursor:default;">' +
-        '<div class="left"><div class="title">'+escapeHtml(it.name)+'</div><div class="sub">'+it.qty+' × '+fmt(it.price)+'</div></div>' +
-        '<div class="right"><div class="amount">'+fmt(it.qty*it.price)+'</div></div>' +
-      '</div>';
-    });
-    html += '</div>';
-    html += '<div class="total-line"><span class="l">Total</span><span class="v">'+fmt(inv.total)+'</span></div>';
-    if(inv.type==='partial'){
-      html += '<div class="dl-row" style="margin-top:4px;"><span class="k">Paid now</span><span class="v">'+fmt(inv.amountPaid||0)+'</span></div>';
-      html += '<div class="dl-row"><span class="k">Added to debt</span><span class="v" style="color:var(--red);">'+fmt(inv.total-(inv.amountPaid||0))+'</span></div>';
-    }
-    if(!inv.voided){
-      html += '<div style="margin-top:18px;display:flex;gap:10px;">' +
-        '<button class="primary block" id="btn-print-invoice">Print receipt</button>' +
-      '</div>' +
-      '<button class="secondary block" id="btn-whatsapp-invoice" style="margin-top:10px;">Share via WhatsApp</button>' +
-      (isOwner() ? ('<div style="display:flex;gap:10px;margin-top:10px;">' +
-        '<button class="secondary block" id="btn-edit-invoice">Edit</button>' +
-        '<button class="secondary danger block" id="btn-void-invoice">Void</button>' +
-      '</div>') : '');
+    const avatarEl = document.getElementById('studentAvatar');
+    if (data.student.photo_url) {
+      avatarEl.innerHTML = `<img src="${API_BASE}${data.student.photo_url}" alt="${data.student.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
     } else {
-      html += '<div style="margin-top:18px;">' +
-        '<button class="primary block" id="btn-print-invoice">Print receipt</button>' +
-      '</div>';
+      avatarEl.textContent = getInitials(data.student.name);
     }
-    return html;
-  }
+    document.getElementById('studentName').textContent = data.student.name;
+    document.getElementById('studentMeta').textContent =
+      `${data.student.class} · Admission no. ${data.student.admission_no} · ${data.term}, ${data.session} (Mid-term)`;
 
-  function renderCustomerDetail(){
-    var c = state.customers.find(function(x){ return x.id===detail.id; });
-    if(!c){ detail=null; return renderDebtsList(); }
-    var custInvoices = state.invoices.filter(function(i){ return i.customerId===c.id; }).sort(function(a,b){return b.createdAt-a.createdAt;});
-    var payments = (c.payments||[]).slice().sort(function(a,b){return b.date-a.date;});
-    var html = '<button class="back-btn" id="btn-back">'+ICONS.back+' Back</button>';
-    html += '<div class="detail-card">' +
-      '<div class="dl-row"><span class="k">Customer</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(c.name)+'</span></div>' +
-      '<div class="dl-row"><span class="k">Phone</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(c.phone||'—')+'</span></div>' +
-      '<div class="dl-row"><span class="k">Balance owed</span><span class="v" style="color:'+(c.balance>0?'var(--red)':'var(--green)')+';">'+fmt(c.balance||0)+'</span></div>' +
-      ((c.balance>0 && c.debtSince) ? '<div class="dl-row"><span class="k">Owing since</span><span class="v" style="font-family:Inter,sans-serif;">'+daysAgo(c.debtSince)+'</span></div>' : '') +
-    '</div>';
-    if((c.balance||0) > 0){
-      html += '<button class="primary block" id="btn-record-payment" style="margin-bottom:18px;">Record payment</button>';
-    }
-    html += '<div class="section-row"><h2 style="font-size:14px;">Invoices</h2></div>';
-    if(custInvoices.length===0){
-      html += '<div class="empty" style="padding:30px 10px;"><p>No invoices for this customer yet.</p></div>';
-    } else {
-      html += '<div class="ledger">';
-      custInvoices.forEach(function(inv){
-        html += '<div class="row" data-open-invoice="'+inv.id+'">' +
-          '<div class="left"><div class="title">Invoice #'+inv.number+'</div><div class="sub">'+new Date(inv.createdAt).toLocaleDateString()+'</div></div>' +
-          '<div class="right"><div class="amount">'+fmt(inv.total)+'</div><span class="pill '+invPillClass(inv)+'">'+invPillLabel(inv)+'</span></div>' +
-        '</div>';
-      });
-      html += '</div>';
-    }
+    // Mid-term has no class position/attendance/average — relabel and show a pass/fail count instead
+    document.getElementById('statTotalLabel').textContent = 'Passed';
+    document.getElementById('statAverageLabel').textContent = 'Average';
+    document.getElementById('statPositionLabel').textContent = 'Class position';
+    document.getElementById('statAttendanceLabel').textContent = 'Attendance';
+    const passed = data.subjects.filter(s => s.remark === 'Pass').length;
+    document.getElementById('statTotal').textContent = `${passed} / ${data.subjects.length} passed`;
+    document.getElementById('statAverage').textContent = '—';
+    document.getElementById('statPosition').textContent = '—';
+    document.getElementById('statAttendance').textContent = '—';
 
-    html += '<div class="section-row" style="margin-top:18px;"><h2 style="font-size:14px;">Payments received</h2></div>';
-    if(payments.length===0){
-      html += '<div class="empty" style="padding:20px 10px;"><p>No payments recorded yet.</p></div>';
-    } else {
-      html += '<div class="ledger">';
-      payments.forEach(function(p){
-        html += '<div class="row" style="cursor:default;">' +
-          '<div class="left"><div class="title">Payment</div><div class="sub">'+new Date(p.date).toLocaleString()+'</div></div>' +
-          '<div class="right"><div class="amount" style="color:var(--green);">'+fmt(p.amount)+'</div></div>' +
-        '</div>';
-      });
-      html += '</div>';
-    }
-    return html;
-  }
+    const tbody = document.getElementById('subjectsBody');
+    tbody.innerHTML = '';
+    // Swap the table header for mid-term's simpler columns
+    document.querySelector('#resultView thead').innerHTML = `
+      <tr>
+        <th>Subject</th>
+        <th class="num">Assignment</th>
+        <th class="num">Test</th>
+        <th class="num">Total</th>
+        <th class="num">Remark</th>
+      </tr>`;
 
-  function daysAgo(ts){
-    var days = Math.max(0, Math.floor((Date.now()-ts)/86400000));
-    if(days===0) return 'Today';
-    if(days===1) return '1 day';
-    return days+' days';
-  }
-
-  function renderProductDetail(){
-    var p = state.products.find(function(x){ return x.id===detail.id; });
-    if(!p){ detail=null; return renderInventoryList(); }
-    var html = '<button class="back-btn" id="btn-back">'+ICONS.back+' Back</button>';
-    html += '<div class="detail-card">' +
-      '<div class="dl-row"><span class="k">Item</span><span class="v" style="font-family:Inter,sans-serif;">'+escapeHtml(p.name)+'</span></div>' +
-      '<div class="dl-row"><span class="k">SKU / Barcode</span><span class="v">'+escapeHtml(p.sku||'—')+'</span></div>' +
-      '<div class="dl-row"><span class="k">Selling price</span><span class="v">'+fmt(p.price)+'</span></div>' +
-      (isOwner() && p.costPrice ? '<div class="dl-row"><span class="k">Cost price</span><span class="v">'+fmt(p.costPrice)+'</span></div>' : '') +
-      (isOwner() && p.costPrice ? '<div class="dl-row"><span class="k">Profit per unit</span><span class="v" style="color:var(--green);">'+fmt(p.price-p.costPrice)+'</span></div>' : '') +
-      '<div class="dl-row"><span class="k">Quantity</span><span class="v">'+p.qty+'</span></div>' +
-    '</div>';
-    html += '<div style="display:flex;gap:10px;">' +
-      '<button class="secondary block" id="btn-restock">'+(isOwner()?'Adjust stock':'Update quantity')+'</button>' +
-      (isOwner() ? '<button class="secondary danger block" id="btn-delete-product">Delete</button>' : '') +
-    '</div>';
-    return html;
-  }
-
-  function invoiceCustName(inv){
-    if(inv.customerId){ var c=findCustomer(inv.customerId); return c?c.name:'Walk-in'; }
-    return inv.customerName || 'Walk-in';
-  }
-  function invPillClass(inv){
-    if(inv.voided) return 'voided';
-    if(inv.type==='credit') return 'credit';
-    if(inv.type==='partial') return 'partial';
-    return 'paid';
-  }
-  function invPillLabel(inv){
-    if(inv.voided) return 'Voided';
-    if(inv.type==='credit') return 'Credit';
-    if(inv.type==='partial') return 'Partial';
-    return 'Paid';
-  }
-  function invStatusLong(inv){
-    if(inv.type==='credit') return 'On credit';
-    if(inv.type==='partial') return 'Partly paid — '+fmt(inv.amountPaid||0)+' of '+fmt(inv.total);
-    return 'Paid in full';
-  }
-  function myRole(){
-    // Legacy shops created before roles existed have no roles map at all —
-    // don't lock the real owner out of their own shop in that case.
-    if(!state.roles || Object.keys(state.roles).length===0) return 'owner';
-    return state.roles[currentUser.email] || 'staff';
-  }
-  function isOwner(){ return myRole() === 'owner'; }
-
-  function invoiceProfit(inv){
-    if(inv.voided) return 0;
-    return inv.items.reduce(function(s,it){ return s + (it.price - (it.cost||0)) * it.qty; }, 0);
-  }
-  function findCustomer(id){ return state.customers.find(function(c){ return c.id===id; }); }
-  function findProduct(id){ return state.products.find(function(p){ return p.id===id; }); }
-
-  function escapeHtml(s){
-    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-    });
-  }
-
-  // ---------- EVENTS: ROOT ----------
-  function attachRootEvents(){
-    var app = document.getElementById('app');
-    app.querySelectorAll('[data-view]').forEach(function(b){
-      b.addEventListener('click', function(){ view=b.getAttribute('data-view'); detail=null; render(); });
-    });
-    var btnScan = document.getElementById('btn-scan');
-    if(btnScan) btnScan.addEventListener('click', openScanSheet);
-    var btnSettings = document.getElementById('btn-settings');
-    if(btnSettings) btnSettings.addEventListener('click', openSettingsSheet);
-    var fab = document.getElementById('fab-new');
-    if(fab) fab.addEventListener('click', function(){ openNewInvoiceSheet(); });
-    var addProduct = document.getElementById('btn-add-product');
-    if(addProduct) addProduct.addEventListener('click', function(){ openProductSheet(null); });
-    var addCustomer = document.getElementById('btn-add-customer');
-    if(addCustomer) addCustomer.addEventListener('click', function(){ openCustomerSheet(null); });
-
-    app.querySelectorAll('[data-open-invoice]').forEach(function(el){
-      el.addEventListener('click', function(){ detail={type:'invoice', id:el.getAttribute('data-open-invoice')}; render(); });
-    });
-    app.querySelectorAll('[data-open-customer]').forEach(function(el){
-      el.addEventListener('click', function(){ detail={type:'customer', id:el.getAttribute('data-open-customer')}; render(); });
-    });
-    app.querySelectorAll('[data-open-product]').forEach(function(el){
-      el.addEventListener('click', function(){ detail={type:'product', id:el.getAttribute('data-open-product')}; render(); });
+    data.subjects.forEach(s => {
+      const tr = document.createElement('tr');
+      const remarkClass = s.remark === 'Pass' ? 'grade-A' : s.remark === 'Fail' ? 'grade-F' : '';
+      tr.innerHTML = `
+        <td>${s.subject_name}</td>
+        <td class="num">${s.assignment ?? '—'}</td>
+        <td class="num">${s.test ?? '—'}</td>
+        <td class="num"><strong>${s.total ?? '—'}</strong></td>
+        <td class="num"><span class="grade-pill ${remarkClass}">${s.remark || '—'}</span></td>
+      `;
+      tbody.appendChild(tr);
     });
 
-    var back = document.getElementById('btn-back');
-    if(back) back.addEventListener('click', function(){ detail=null; render(); });
-
-    var printBtn = document.getElementById('btn-print-invoice');
-    if(printBtn) printBtn.addEventListener('click', function(){ printInvoice(detail.id); });
-
-    var waBtn = document.getElementById('btn-whatsapp-invoice');
-    if(waBtn) waBtn.addEventListener('click', function(){ shareInvoiceWhatsapp(detail.id); });
-
-    var editBtn = document.getElementById('btn-edit-invoice');
-    if(editBtn) editBtn.addEventListener('click', function(){ editInvoice(detail.id); });
-
-    var voidBtn = document.getElementById('btn-void-invoice');
-    if(voidBtn) voidBtn.addEventListener('click', function(){
-      if(confirm('Void this invoice? Stock will be restored and any debt it added will be reversed. This cannot be undone.')){
-        voidInvoice(detail.id);
-        render();
-        showToast('Invoice voided');
-      }
-    });
-
-    var summaryBtn = document.getElementById('btn-summary');
-    if(summaryBtn) summaryBtn.addEventListener('click', openSummarySheet);
-
-    var payBtn = document.getElementById('btn-record-payment');
-    if(payBtn) payBtn.addEventListener('click', function(){ openPaymentSheet(detail.id); });
-
-    var restockBtn = document.getElementById('btn-restock');
-    if(restockBtn) restockBtn.addEventListener('click', function(){ openRestockSheet(detail.id); });
-
-    var delProdBtn = document.getElementById('btn-delete-product');
-    if(delProdBtn) delProdBtn.addEventListener('click', function(){
-      if(confirm('Delete this item from inventory?')){
-        state.products = state.products.filter(function(p){ return p.id!==detail.id; });
-        detail=null; view='inventory'; saveData(); render();
-        showToast('Item deleted');
-      }
-    });
+    document.getElementById('commentsBlock').innerHTML = '';
   }
 
-  // ---------- SHEET FRAMEWORK ----------
-  function openSheet(builder){
-    sheet = builder;
-    render();
+  function backToLogin() {
+    document.getElementById('resultView').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('loginView').style.display = 'block';
   }
-  function closeSheet(){ sheet=null; stopScanner(); render(); }
-
-  function renderSheet(){
-    var app = document.getElementById('app');
-    var wrap = document.createElement('div');
-    wrap.className = 'overlay';
-    wrap.id = 'overlay';
-    wrap.innerHTML = '<div class="sheet" id="sheet-inner">' + sheet.html() + '</div>';
-    app.appendChild(wrap);
-    wrap.addEventListener('click', function(e){ if(e.target.id==='overlay') closeSheet(); });
-    var closeBtn = document.getElementById('sheet-close');
-    if(closeBtn) closeBtn.addEventListener('click', closeSheet);
-    sheet.attach();
-  }
-
-  // ---------- SETTINGS SHEET ----------
-  function openSettingsSheet(){
-    var owner = isOwner();
-    openSheet({
-      html: function(){
-        if(!owner){
-          // Minimal settings for staff — no shop config, branding, Excel, or team management.
-          return '<div class="sheet-head"><h2>Settings</h2><button class="close" id="sheet-close">&times;</button></div>' +
-            '<div class="scan-note" style="text-align:left;">Signed in as <strong style="color:var(--ink);">'+escapeHtml((currentUser&&currentUser.email)||'')+'</strong><br>Role: Staff</div>' +
-            '<label>Your name (shown on receipts as who made the sale)</label>' +
-            '<input id="my-name" value="'+escapeHtml((state.staffNames&&state.staffNames[currentUser.email])||'')+'" placeholder="'+escapeHtml(staffName(currentUser.email))+'">' +
-            '<button class="secondary block" id="save-my-name" style="margin-top:10px;">Save name</button>' +
-            '<button class="secondary block" id="switch-shop-btn" style="margin-top:18px;">Switch shop</button>' +
-            '<button class="secondary block" id="signout-btn" style="margin-top:8px;">Sign out</button>';
-        }
-        return '<div class="sheet-head"><h2>Settings</h2><button class="close" id="sheet-close">&times;</button></div>' +
-          '<label>Shop name</label><input id="set-name" value="'+escapeHtml(state.shopName)+'">' +
-          '<label>Currency symbol</label><input id="set-currency" value="'+escapeHtml(state.currency)+'" maxlength="3">' +
-          '<label>Low stock warning at or below</label><input id="set-lowstock" type="number" class="num-input" value="'+state.lowStock+'">' +
-          '<label>Your name (shown on receipts as who made the sale)</label>' +
-          '<input id="my-name" value="'+escapeHtml((state.staffNames&&state.staffNames[currentUser.email])||'')+'" placeholder="'+escapeHtml(staffName(currentUser.email))+'">' +
-          '<button class="primary block" id="save-settings" style="margin-top:20px;">Save</button>' +
-          '<div style="border-top:1px solid var(--line);margin-top:22px;padding-top:16px;">' +
-            '<label style="margin-top:0;">Branding</label>' +
-            (state.shopLogo
-              ? ('<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;"><img src="'+state.shopLogo+'" style="height:48px;width:48px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:var(--card);"><button class="secondary" id="remove-logo-btn" style="padding:8px 14px;font-size:12.5px;">Remove logo</button></div>')
-              : '<div class="scan-note" style="text-align:left;margin-bottom:8px;">Add your shop logo — it\'ll show in the app header and on printed receipts.</div>'
-            ) +
-            '<input type="file" id="logo-file" accept="image/*" style="display:none;">' +
-            '<button class="secondary block" id="logo-upload-btn">'+(state.shopLogo?'Change logo':'Upload logo')+'</button>' +
-          '</div>' +
-          '<div style="border-top:1px solid var(--line);margin-top:22px;padding-top:16px;">' +
-            '<label style="margin-top:0;">Excel</label>' +
-            '<div style="display:flex;flex-direction:column;gap:8px;">' +
-              '<button class="secondary block" id="export-inventory">Export inventory (.xlsx)</button>' +
-              '<button class="secondary block" id="export-invoices">Export invoices (.xlsx)</button>' +
-              '<button class="secondary block" id="import-inventory-btn">Import inventory from Excel</button>' +
-              '<input type="file" id="import-inventory-file" accept=".xlsx,.xls,.csv" style="display:none;">' +
-            '</div>' +
-            '<div class="scan-note" style="text-align:left;margin-top:8px;">Import expects columns Name, SKU, Price, Quantity. Existing SKUs get restocked; new ones are added.</div>' +
-          '</div>' +
-          '<div style="border-top:1px solid var(--line);margin-top:22px;padding-top:16px;">' +
-            '<label style="margin-top:0;">Team</label>' +
-            renderTeamList() +
-            '<label>Invite a teammate</label>' +
-            '<div class="row-2"><div><input id="invite-email" type="email" placeholder="teammate@email.com"></div><div><button class="secondary block" id="invite-btn">Invite</button></div></div>' +
-            '<div class="toggle-group" id="invite-role" style="margin-top:8px;">' +
-              '<button data-r="staff" class="sel">Staff</button>' +
-              '<button data-r="owner">Owner</button>' +
-            '</div>' +
-            '<div class="scan-note" style="text-align:left;margin-top:6px;">Staff can sell and restock quantities, but can\'t edit prices, delete items, void invoices, or see Debts. They\'ll need to sign up with this exact email, then pick this shop from their list.</div>' +
-          '</div>' +
-          '<div style="border-top:1px solid var(--line);margin-top:22px;padding-top:16px;">' +
-            '<label style="margin-top:0;">Cloud sync</label>' +
-            '<div class="scan-note" style="text-align:left;">Connected · Shop ID: <strong style="font-family:IBM Plex Mono,monospace;color:var(--ink);">'+escapeHtml(shopId||'—')+'</strong><br>Signed in as '+escapeHtml((currentUser&&currentUser.email)||'')+' (Owner)</div>' +
-            '<button class="secondary block" id="switch-shop-btn" style="margin-top:14px;">Switch shop</button>' +
-            '<button class="secondary block" id="signout-btn" style="margin-top:8px;">Sign out</button>' +
-          '</div>' +
-          '<div style="border-top:1px solid var(--line);margin-top:22px;padding-top:16px;">' +
-            '<label style="margin-top:0;color:var(--red);">Danger zone</label>' +
-            '<button class="secondary danger block" id="delete-shop-btn">Delete this shop</button>' +
-            '<div class="scan-note" style="text-align:left;margin-top:6px;">Permanently deletes all products, invoices, customers and debt records for everyone with access. Cannot be undone.</div>' +
-          '</div>';
-      },
-      attach: function(){
-        var switchBtn = document.getElementById('switch-shop-btn');
-        if(switchBtn) switchBtn.addEventListener('click', function(){ closeSheet(); switchShop(); });
-        var signoutBtn = document.getElementById('signout-btn');
-        if(signoutBtn) signoutBtn.addEventListener('click', function(){ closeSheet(); signOutUser(); });
-        var saveNameBtn = document.getElementById('save-my-name');
-        if(saveNameBtn) saveNameBtn.addEventListener('click', function(){
-          if(!state.staffNames) state.staffNames = {};
-          state.staffNames[currentUser.email] = document.getElementById('my-name').value.trim();
-          saveData(); closeSheet(); showToast('Name saved');
-        });
-
-        if(!owner) return; // staff get nothing else to wire up
-
-        document.getElementById('save-settings').addEventListener('click', function(){
-          state.shopName = document.getElementById('set-name').value.trim() || 'My Shop';
-          state.currency = document.getElementById('set-currency').value.trim() || '$';
-          state.lowStock = parseInt(document.getElementById('set-lowstock').value) || 5;
-          if(!state.staffNames) state.staffNames = {};
-          state.staffNames[currentUser.email] = document.getElementById('my-name').value.trim();
-          saveData(); closeSheet(); showToast('Settings saved');
-        });
-        document.getElementById('export-inventory').addEventListener('click', exportInventoryXlsx);
-        document.getElementById('export-invoices').addEventListener('click', exportInvoicesXlsx);
-        var logoBtn = document.getElementById('logo-upload-btn');
-        var logoFile = document.getElementById('logo-file');
-        if(logoBtn) logoBtn.addEventListener('click', function(){ logoFile.click(); });
-        if(logoFile) logoFile.addEventListener('change', function(e){
-          if(e.target.files && e.target.files[0]) handleLogoUpload(e.target.files[0]);
-        });
-        var removeLogoBtn = document.getElementById('remove-logo-btn');
-        if(removeLogoBtn) removeLogoBtn.addEventListener('click', function(){
-          state.shopLogo = null;
-          saveData(); closeSheet(); render();
-          showToast('Logo removed');
-        });
-
-        var selectedInviteRole = 'staff';
-        document.querySelectorAll('#invite-role button').forEach(function(b){
-          b.addEventListener('click', function(){
-            selectedInviteRole = b.getAttribute('data-r');
-            document.querySelectorAll('#invite-role button').forEach(function(x){ x.classList.remove('sel'); });
-            b.classList.add('sel');
-          });
-        });
-        var inviteBtn = document.getElementById('invite-btn');
-        if(inviteBtn) inviteBtn.addEventListener('click', function(){
-          inviteTeammate(document.getElementById('invite-email').value, selectedInviteRole);
-          closeSheet();
-        });
-        document.querySelectorAll('[data-toggle-role]').forEach(function(b){
-          b.addEventListener('click', function(){
-            var email = b.getAttribute('data-toggle-role');
-            var newRole = b.getAttribute('data-new-role');
-            setMemberRole(email, newRole);
-            closeSheet();
-          });
-        });
-        document.querySelectorAll('[data-remove-member]').forEach(function(b){
-          b.addEventListener('click', function(){
-            var email = b.getAttribute('data-remove-member');
-            if(confirm('Remove '+email+' from this shop? They will immediately lose access.')){
-              removeMember(email);
-              closeSheet();
-            }
-          });
-        });
-        var deleteShopBtn = document.getElementById('delete-shop-btn');
-        if(deleteShopBtn) deleteShopBtn.addEventListener('click', function(){
-          var typed = prompt('This permanently deletes "'+state.shopName+'" and everything in it for everyone. This cannot be undone.\n\nType the Shop ID to confirm: '+shopId);
-          if(typed === shopId){
-            closeSheet();
-            deleteShop();
-          } else if(typed !== null){
-            showToast('Shop ID did not match — nothing was deleted');
-          }
-        });
-
-        var importBtn = document.getElementById('import-inventory-btn');
-        var importFile = document.getElementById('import-inventory-file');
-        if(importBtn) importBtn.addEventListener('click', function(){ importFile.click(); });
-        if(importFile) importFile.addEventListener('change', function(e){
-          if(e.target.files && e.target.files[0]) importInventoryXlsx(e.target.files[0]);
-        });
-      }
-    });
-  }
-
-  function renderTeamList(){
-    var emails = state.allowedEmails || [];
-    if(emails.length <= 1){
-      return '<div class="scan-note" style="text-align:left;margin-bottom:10px;">Just you so far.</div>';
-    }
-    var html = '<div class="ledger" style="margin-bottom:14px;">';
-    emails.forEach(function(email){
-      var role = (state.roles && state.roles[email]) || 'staff';
-      var isSelf = currentUser && email===currentUser.email;
-      html += '<div class="row" style="cursor:default;">' +
-        '<div class="left"><div class="title">'+escapeHtml(email)+(isSelf?' (you)':'')+'</div><div class="sub">'+(role==='owner'?'Owner':'Staff')+'</div></div>' +
-        (isSelf ? '' : ('<div class="right" style="flex-direction:row;gap:6px;align-items:center;">' +
-          '<button class="secondary" data-toggle-role="'+escapeHtml(email)+'" data-new-role="'+(role==='owner'?'staff':'owner')+'" style="padding:6px 10px;font-size:11.5px;">Make '+(role==='owner'?'Staff':'Owner')+'</button>' +
-          '<button class="secondary danger" data-remove-member="'+escapeHtml(email)+'" style="padding:6px 10px;font-size:11.5px;">Remove</button>' +
-        '</div>')) +
-      '</div>';
-    });
-    html += '</div>';
-    return html;
-  }
-
-  // ---------- EXCEL EXPORT / IMPORT ----------
-  function safeFileBase(){ return (state.shopName||'shop').replace(/[^a-z0-9]/gi,'_'); }
-
-  // ---------- LOGO ----------
-  function handleLogoUpload(file){
-    if(!file.type || file.type.indexOf('image/')!==0){ showToast('Please choose an image file'); return; }
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var img = new Image();
-      img.onload = function(){
-        var maxDim = 200;
-        var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        var w = Math.max(1, Math.round(img.width*scale));
-        var h = Math.max(1, Math.round(img.height*scale));
-        var canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        var dataUrl = canvas.toDataURL('image/png');
-        if(dataUrl.length > 600000){
-          showToast('That image is too large — try a smaller, simpler logo');
-          return;
-        }
-        state.shopLogo = dataUrl;
-        saveData();
-        closeSheet();
-        render();
-        showToast('Logo updated');
-      };
-      img.onerror = function(){ showToast('Could not read that image'); };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function exportInventoryXlsx(){
-    if(typeof XLSX==='undefined'){ showToast('Excel library failed to load'); return; }
-    var rows = state.products.map(function(p){
-      return { Name:p.name, SKU:p.sku||'', Price:p.price, Quantity:p.qty };
-    });
-    var ws = XLSX.utils.json_to_sheet(rows);
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
-    XLSX.writeFile(wb, safeFileBase()+'_inventory.xlsx');
-    showToast('Inventory exported');
-  }
-
-  // ---------- SALES SUMMARY ----------
-  var summaryPeriod = 'today';
-  function periodStart(period){
-    var now = new Date();
-    if(period==='today'){ return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); }
-    if(period==='week'){ return Date.now() - 7*86400000; }
-    if(period==='month'){ return Date.now() - 30*86400000; }
-    return 0;
-  }
-  function computeSummary(period){
-    var start = periodStart(period);
-    var invs = state.invoices.filter(function(i){ return !i.voided && i.createdAt >= start; });
-    var sales = invs.reduce(function(s,i){ return s+i.total; }, 0);
-    var profit = invs.reduce(function(s,i){ return s+invoiceProfit(i); }, 0);
-    var itemTotals = {};
-    invs.forEach(function(inv){
-      inv.items.forEach(function(it){
-        if(!itemTotals[it.name]) itemTotals[it.name] = { qty:0, revenue:0 };
-        itemTotals[it.name].qty += it.qty;
-        itemTotals[it.name].revenue += it.qty*it.price;
-      });
-    });
-    var topItems = Object.keys(itemTotals).map(function(name){
-      return { name:name, qty:itemTotals[name].qty, revenue:itemTotals[name].revenue };
-    }).sort(function(a,b){ return b.revenue-a.revenue; }).slice(0,5);
-    return { count: invs.length, sales: sales, profit: profit, topItems: topItems };
-  }
-
-  function openSummarySheet(){
-    summaryPeriod = 'today';
-    openSheet({ html: renderSummaryHtml, attach: attachSummaryEvents });
-  }
-
-  function renderSummaryHtml(){
-    var s = computeSummary(summaryPeriod);
-    var html = '<div class="sheet-head"><h2>Summary</h2><button class="close" id="sheet-close">&times;</button></div>';
-    html += '<div class="toggle-group" id="summary-period">' +
-      '<button data-p="today" class="'+(summaryPeriod==='today'?'sel':'')+'">Today</button>' +
-      '<button data-p="week" class="'+(summaryPeriod==='week'?'sel':'')+'">7 days</button>' +
-      '<button data-p="month" class="'+(summaryPeriod==='month'?'sel':'')+'">30 days</button>' +
-    '</div>';
-    html += '<div class="totals-strip" style="margin-top:14px;">' +
-      '<div class="stat"><div class="label">Sales</div><div class="value">'+fmt(s.sales)+'</div></div>' +
-      '<div class="stat"><div class="label">Profit</div><div class="value">'+fmt(s.profit)+'</div></div>' +
-    '</div>';
-    html += '<div class="scan-note" style="text-align:left;margin-bottom:14px;">'+s.count+' invoice'+(s.count!==1?'s':'')+' in this period (voided invoices excluded)</div>';
-    html += '<label style="margin-top:0;">Top-selling items</label>';
-    if(s.topItems.length===0){
-      html += '<div class="empty" style="padding:20px 10px;"><p>No sales in this period yet.</p></div>';
-    } else {
-      html += '<div class="ledger">';
-      s.topItems.forEach(function(it){
-        html += '<div class="row" style="cursor:default;">' +
-          '<div class="left"><div class="title">'+escapeHtml(it.name)+'</div><div class="sub">'+it.qty+' sold</div></div>' +
-          '<div class="right"><div class="amount">'+fmt(it.revenue)+'</div></div>' +
-        '</div>';
-      });
-      html += '</div>';
-    }
-    return html;
-  }
-
-  function attachSummaryEvents(){
-    document.getElementById('sheet-close').addEventListener('click', closeSheet);
-    document.querySelectorAll('#summary-period button').forEach(function(b){
-      b.addEventListener('click', function(){
-        summaryPeriod = b.getAttribute('data-p');
-        var el = document.getElementById('sheet-inner');
-        if(el){ el.innerHTML = renderSummaryHtml(); attachSummaryEvents(); }
-      });
-    });
-  }
-
-  function exportInvoicesXlsx(){
-    if(typeof XLSX==='undefined'){ showToast('Excel library failed to load'); return; }
-    var rows = [];
-    state.invoices.slice().sort(function(a,b){return a.createdAt-b.createdAt;}).forEach(function(inv){
-      var custName = invoiceCustName(inv);
-      inv.items.forEach(function(it){
-        rows.push({
-          Invoice: inv.number,
-          Date: new Date(inv.createdAt).toLocaleDateString(),
-          Customer: custName,
-          Status: invPillLabel(inv),
-          Item: it.name,
-          Qty: it.qty,
-          Price: it.price,
-          Cost: it.cost||0,
-          LineTotal: it.qty*it.price,
-          LineProfit: (it.price-(it.cost||0))*it.qty,
-          Voided: inv.voided ? 'Yes' : 'No'
-        });
-      });
-    });
-    var ws = XLSX.utils.json_to_sheet(rows);
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Invoices');
-    XLSX.writeFile(wb, safeFileBase()+'_invoices.xlsx');
-    showToast('Invoices exported');
-  }
-
-  function importInventoryXlsx(file){
-    if(typeof XLSX==='undefined'){ showToast('Excel library failed to load'); return; }
-    var reader = new FileReader();
-    reader.onload = function(e){
-      try{
-        var data = new Uint8Array(e.target.result);
-        var wb = XLSX.read(data, {type:'array'});
-        var ws = wb.Sheets[wb.SheetNames[0]];
-        var rows = XLSX.utils.sheet_to_json(ws);
-        var added=0, updated=0;
-        rows.forEach(function(r){
-          var name = r.Name || r.name || r.Item || r.item;
-          if(!name) return;
-          var sku = String(r.SKU || r.sku || r.Barcode || r.barcode || '').trim();
-          var price = parseFloat(r.Price || r.price) || 0;
-          var qty = parseInt(r.Quantity || r.quantity || r.Qty || r.qty) || 0;
-          var existing = sku ? state.products.find(function(p){ return p.sku && p.sku.toLowerCase()===sku.toLowerCase(); }) : null;
-          if(existing){
-            existing.qty += qty;
-            if(price) existing.price = price;
-            updated++;
-          } else {
-            state.products.push({ id:uid(), name:String(name), sku:sku, price:price, qty:qty });
-            added++;
-          }
-        });
-        saveData();
-        closeSheet();
-        view='inventory'; detail=null;
-        render();
-        showToast(added+' added, '+updated+' restocked');
-      }catch(err){
-        showToast('Could not read that file — check the format');
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  }
-
-  // ---------- PRODUCT SHEET (add/edit) ----------
-  function openProductSheet(prefillSku){
-    openSheet({
-      html: function(){
-        return '<div class="sheet-head"><h2>Add item</h2><button class="close" id="sheet-close">&times;</button></div>' +
-          '<label>Name</label><input id="p-name" placeholder="e.g. Rice 5kg bag">' +
-          '<div class="row-2">' +
-          '<div><label>SKU / Barcode</label><input id="p-sku" class="num-input" value="'+escapeHtml(prefillSku||'')+'"></div>' +
-          '<div><label>Selling price</label><input id="p-price" type="number" step="0.01" class="num-input" placeholder="0.00"></div>' +
-          '</div>' +
-          '<div class="row-2">' +
-          '<div><label>Cost price (optional)</label><input id="p-cost" type="number" step="0.01" class="num-input" placeholder="0.00"></div>' +
-          '<div><label>Starting quantity</label><input id="p-qty" type="number" class="num-input" placeholder="0"></div>' +
-          '</div>' +
-          '<div class="scan-note" style="text-align:left;">Cost price lets the app calculate your profit. Leave blank if you\'d rather not track it.</div>' +
-          '<button class="primary block" id="save-product" style="margin-top:20px;">Save item</button>';
-      },
-      attach: function(){
-        document.getElementById('save-product').addEventListener('click', function(){
-          var name = document.getElementById('p-name').value.trim();
-          if(!name){ showToast('Enter an item name'); return; }
-          var price = parseFloat(document.getElementById('p-price').value) || 0;
-          var cost = parseFloat(document.getElementById('p-cost').value) || 0;
-          var qty = parseInt(document.getElementById('p-qty').value) || 0;
-          var sku = document.getElementById('p-sku').value.trim();
-          state.products.push({ id:uid(), name:name, sku:sku, price:price, costPrice:cost, qty:qty });
-          saveData(); closeSheet(); view='inventory'; render();
-          showToast('Item added');
-        });
-      }
-    });
-  }
-
-  function openRestockSheet(productId){
-    var p = findProduct(productId);
-    if(!p) return;
-    var owner = isOwner();
-    openSheet({
-      html: function(){
-        var html = '<div class="sheet-head"><h2>'+(owner?'Adjust stock':'Update quantity')+'</h2><button class="close" id="sheet-close">&times;</button></div>';
-        if(owner){
-          html += '<label>'+escapeHtml(p.name)+' — current qty '+p.qty+'</label>' +
-            '<div class="row-2">' +
-            '<div><label>New quantity</label><input id="r-qty" type="number" class="num-input" value="'+p.qty+'"></div>' +
-            '<div><label>Selling price</label><input id="r-price" type="number" step="0.01" class="num-input" value="'+p.price+'"></div>' +
-            '</div>' +
-            '<label>Cost price (optional)</label><input id="r-cost" type="number" step="0.01" class="num-input" value="'+(p.costPrice||0)+'">';
-        } else {
-          html += '<label>'+escapeHtml(p.name)+' — current qty '+p.qty+'</label>' +
-            '<input id="r-qty" type="number" class="num-input" value="'+p.qty+'">';
-        }
-        html += '<button class="primary block" id="save-restock" style="margin-top:20px;">Save</button>';
-        return html;
-      },
-      attach: function(){
-        document.getElementById('save-restock').addEventListener('click', function(){
-          p.qty = parseInt(document.getElementById('r-qty').value) || 0;
-          if(owner){
-            p.price = parseFloat(document.getElementById('r-price').value) || 0;
-            p.costPrice = parseFloat(document.getElementById('r-cost').value) || 0;
-          }
-          saveData(); closeSheet(); render();
-          showToast('Stock updated');
-        });
-      }
-    });
-  }
-
-  // ---------- CUSTOMER SHEET ----------
-  function openCustomerSheet(){
-    openSheet({
-      html: function(){
-        return '<div class="sheet-head"><h2>Add customer</h2><button class="close" id="sheet-close">&times;</button></div>' +
-          '<label>Name</label><input id="c-name" placeholder="e.g. John Mwangi">' +
-          '<label>Phone</label><input id="c-phone" placeholder="Optional">' +
-          '<button class="primary block" id="save-customer" style="margin-top:20px;">Save customer</button>';
-      },
-      attach: function(){
-        document.getElementById('save-customer').addEventListener('click', function(){
-          var name = document.getElementById('c-name').value.trim();
-          if(!name){ showToast('Enter a name'); return; }
-          state.customers.push({ id:uid(), name:name, phone:document.getElementById('c-phone').value.trim(), balance:0 });
-          saveData(); closeSheet(); render();
-          showToast('Customer added');
-        });
-      }
-    });
-  }
-
-  function openPaymentSheet(customerId){
-    var c = findCustomer(customerId);
-    if(!c) return;
-    openSheet({
-      html: function(){
-        return '<div class="sheet-head"><h2>Record payment</h2><button class="close" id="sheet-close">&times;</button></div>' +
-          '<label>'+escapeHtml(c.name)+' owes '+fmt(c.balance)+'</label>' +
-          '<input id="pay-amount" type="number" step="0.01" class="num-input" placeholder="Amount paid">' +
-          '<button class="primary block" id="save-payment" style="margin-top:20px;">Record payment</button>';
-      },
-      attach: function(){
-        document.getElementById('save-payment').addEventListener('click', function(){
-          var amt = parseFloat(document.getElementById('pay-amount').value);
-          if(!amt || amt<=0){ showToast('Enter a valid amount'); return; }
-          if(!c.payments) c.payments = [];
-          c.payments.push({ id: uid(), amount: amt, date: Date.now() });
-          c.balance = Math.max(0, (c.balance||0) - amt);
-          if(c.balance === 0) c.debtSince = null;
-          saveData(); closeSheet(); render();
-          showToast('Payment recorded');
-        });
-      }
-    });
-  }
-
-  // ---------- NEW INVOICE SHEET ----------
-  var draftInvoice = null;
-  function openNewInvoiceSheet(prefill){
-    if(prefill){
-      draftInvoice = {
-        customerId: prefill.customerId || null,
-        customerName: prefill.customerName || '',
-        type: prefill.type || 'cash',
-        items: prefill.items.map(function(it){ return Object.assign({}, it); }), // deep-ish copy
-        amountPaid: prefill.amountPaid || 0
-      };
-    } else {
-      draftInvoice = { customerId:null, customerName:'', type:'cash', items:[], amountPaid:0 };
-    }
-    openSheet({
-      html: renderInvoiceSheetHtml,
-      attach: attachInvoiceSheetEvents
-    });
-  }
-
-  function voidInvoice(invId){
-    var inv = state.invoices.find(function(i){ return i.id===invId; });
-    if(!inv || inv.voided) return;
-
-    // restore stock
-    inv.items.forEach(function(it){
-      var p = findProduct(it.productId);
-      if(p) p.qty += it.qty;
-    });
-
-    // reverse any debt this invoice added
-    if((inv.type==='credit' || inv.type==='partial') && inv.customerId){
-      var c = findCustomer(inv.customerId);
-      if(c){
-        var addedAmount = inv.type==='credit' ? inv.total : (inv.total - (inv.amountPaid||0));
-        c.balance = Math.max(0, (c.balance||0) - addedAmount);
-        if(c.balance === 0) c.debtSince = null;
-      }
-    }
-
-    inv.voided = true;
-    inv.voidedAt = Date.now();
-    saveData();
-  }
-
-  function editInvoice(invId){
-    var inv = state.invoices.find(function(i){ return i.id===invId; });
-    if(!inv) return;
-    if(!confirm('This marks the current invoice as voided (stock and debt are reversed) and opens a fresh copy for you to correct and save. Continue?')) return;
-    voidInvoice(invId);
-    detail = null; view = 'invoices';
-    openNewInvoiceSheet({
-      customerId: inv.customerId,
-      customerName: inv.customerName,
-      type: inv.type,
-      items: inv.items,
-      amountPaid: inv.amountPaid
-    });
-  }
-
-  function renderInvoiceSheetHtml(){
-    var html = '<div class="sheet-head"><h2>New invoice</h2><button class="close" id="sheet-close">&times;</button></div>';
-
-    html += '<label>Customer</label>';
-    html += '<div class="toggle-group" id="pay-type">' +
-      '<button data-t="cash" class="'+(draftInvoice.type==='cash'?'sel':'')+'">Cash sale</button>' +
-      '<button data-t="credit" class="'+(draftInvoice.type==='credit'?'sel':'')+'">On credit</button>' +
-      '<button data-t="partial" class="'+(draftInvoice.type==='partial'?'sel':'')+'">Part payment</button>' +
-    '</div>';
-
-    if(draftInvoice.type==='credit' || draftInvoice.type==='partial'){
-      html += '<div class="search-add" style="margin-top:10px;">' +
-        '<input id="cust-search" placeholder="Search or add customer…" autocomplete="off" value="'+(draftInvoice.customerId? escapeHtml(findCustomer(draftInvoice.customerId).name):'')+'">' +
-        '<div id="cust-suggest"></div>' +
-      '</div>';
-    } else {
-      html += '<input id="cash-cust-name" placeholder="Customer name (optional)" autocomplete="off" style="margin-top:10px;" value="'+escapeHtml(draftInvoice.customerName||'')+'">';
-    }
-
-    html += '<label style="margin-top:16px;">Add items</label>';
-    html += '<div class="search-add">' +
-      '<input id="item-search" placeholder="Search product or scan barcode…" autocomplete="off">' +
-      '<div id="item-suggest"></div>' +
-    '</div>';
-
-    html += '<div id="invoice-items" style="margin-top:12px;">' + renderDraftItems() + '</div>';
-
-    var total = draftInvoice.items.reduce(function(s,it){ return s+it.qty*it.price; },0);
-    html += '<div class="total-line"><span class="l">Total</span><span class="v">'+fmt(total)+'</span></div>';
-
-    if(draftInvoice.type==='partial'){
-      var paid = draftInvoice.amountPaid || 0;
-      var remaining = Math.max(0, total - paid);
-      html += '<label>Amount paid now</label>';
-      html += '<input id="partial-paid" type="number" step="0.01" class="num-input" placeholder="0.00" value="'+(draftInvoice.amountPaid!=null ? draftInvoice.amountPaid : '')+'">';
-      html += '<div class="scan-note" style="text-align:left;">Remaining balance added to their debt: <strong style="color:var(--red);">'+fmt(remaining)+'</strong></div>';
-    }
-
-    html += '<button class="primary block" id="save-invoice" style="margin-top:18px;">Save &amp; print</button>';
-    return html;
-  }
-
-  function renderDraftItems(){
-    if(draftInvoice.items.length===0){
-      return '<div class="scan-note">No items added yet.</div>';
-    }
-    return draftInvoice.items.map(function(it,idx){
-      return '<div class="item-line">' +
-        '<div class="info"><div class="n">'+escapeHtml(it.name)+'</div><div class="p">'+fmt(it.price)+' each</div></div>' +
-        '<div class="qty-stepper">' +
-          '<button data-dec="'+idx+'">−</button>' +
-          '<input type="number" min="1" class="num-input" data-qty="'+idx+'" value="'+it.qty+'" style="width:44px;text-align:center;padding:4px 2px;">' +
-          '<button data-inc="'+idx+'">+</button>' +
-        '</div>' +
-        '<div class="lt">'+fmt(it.qty*it.price)+'</div>' +
-        '<button class="rm" data-rm="'+idx+'">&times;</button>' +
-      '</div>';
-    }).join('');
-  }
-
-  function refreshInvoiceSheet(){
-    var el = document.getElementById('sheet-inner');
-    if(el){ el.innerHTML = renderInvoiceSheetHtml(); attachInvoiceSheetEvents(); }
-  }
-
-  function attachInvoiceSheetEvents(){
-    document.getElementById('sheet-close').addEventListener('click', closeSheet);
-
-    document.querySelectorAll('#pay-type button').forEach(function(b){
-      b.addEventListener('click', function(){
-        draftInvoice.type = b.getAttribute('data-t');
-        if(draftInvoice.type==='cash') draftInvoice.customerId=null;
-        refreshInvoiceSheet();
-      });
-    });
-
-    var partialPaid = document.getElementById('partial-paid');
-    if(partialPaid){
-      partialPaid.addEventListener('change', function(){
-        var v = parseFloat(partialPaid.value);
-        draftInvoice.amountPaid = (v>=0) ? v : 0;
-        refreshInvoiceSheet();
-      });
-    }
-
-    var custSearch = document.getElementById('cust-search');
-    var cashName = document.getElementById('cash-cust-name');
-    if(cashName){
-      cashName.addEventListener('change', function(){ draftInvoice.customerName = cashName.value; });
-    }
-    if(custSearch){
-      custSearch.addEventListener('input', function(){
-        var q = custSearch.value.trim().toLowerCase();
-        var box = document.getElementById('cust-suggest');
-        if(!q){ box.innerHTML=''; return; }
-        var matches = state.customers.filter(function(c){ return c.name.toLowerCase().indexOf(q)>-1; });
-        var html = '<div class="suggest">';
-        matches.slice(0,6).forEach(function(c){
-          html += '<div class="opt" data-pick-cust="'+c.id+'"><span class="n">'+escapeHtml(c.name)+'</span><span class="s">'+fmt(c.balance||0)+' owed</span></div>';
-        });
-        html += '<div class="opt" data-new-cust="1"><span class="n">+ New customer "'+escapeHtml(custSearch.value.trim())+'"</span></div>';
-        html += '</div>';
-        box.innerHTML = html;
-        box.querySelectorAll('[data-pick-cust]').forEach(function(o){
-          o.addEventListener('click', function(){
-            draftInvoice.customerId = o.getAttribute('data-pick-cust');
-            document.getElementById('cust-suggest').innerHTML='';
-            custSearch.value = findCustomer(draftInvoice.customerId).name;
-          });
-        });
-        var nc = box.querySelector('[data-new-cust]');
-        if(nc) nc.addEventListener('click', function(){
-          var name = custSearch.value.trim();
-          if(!name) return;
-          var c = {id:uid(), name:name, phone:'', balance:0};
-          state.customers.push(c);
-          draftInvoice.customerId = c.id;
-          document.getElementById('cust-suggest').innerHTML='';
-        });
-      });
-    }
-
-    var itemSearch = document.getElementById('item-search');
-    itemSearch.addEventListener('input', function(){
-      var q = itemSearch.value.trim().toLowerCase();
-      var box = document.getElementById('item-suggest');
-      if(!q){ box.innerHTML=''; return; }
-      var matches = state.products.filter(function(p){
-        return p.name.toLowerCase().indexOf(q)>-1 || (p.sku||'').toLowerCase().indexOf(q)>-1;
-      });
-      if(matches.length===0){ box.innerHTML = '<div class="suggest"><div class="opt"><span class="s">No matching items</span></div></div>'; return; }
-      var html = '<div class="suggest">';
-      matches.slice(0,8).forEach(function(p){
-        html += '<div class="opt" data-pick-item="'+p.id+'" style="'+(p.qty<=0?'opacity:0.45;':'')+'"><span class="n">'+escapeHtml(p.name)+'</span><span class="s">'+fmt(p.price)+' · '+(p.qty<=0?'Out of stock':(p.qty+' left'))+'</span></div>';
-      });
-      html += '</div>';
-      box.innerHTML = html;
-      box.querySelectorAll('[data-pick-item]').forEach(function(o){
-        o.addEventListener('click', function(){
-          addDraftItem(o.getAttribute('data-pick-item'));
-          itemSearch.value=''; box.innerHTML='';
-        });
-      });
-    });
-    itemSearch.addEventListener('keydown', function(e){
-      if(e.key==='Enter'){
-        e.preventDefault();
-        var q = itemSearch.value.trim().toLowerCase();
-        var match = state.products.find(function(p){ return (p.sku||'').toLowerCase()===q; });
-        if(match){ addDraftItem(match.id); itemSearch.value=''; document.getElementById('item-suggest').innerHTML=''; }
-      }
-    });
-
-    bindItemLineEvents();
-
-    document.getElementById('save-invoice').addEventListener('click', commitInvoice);
-  }
-
-  function bindItemLineEvents(){
-    document.querySelectorAll('[data-inc]').forEach(function(b){
-      b.addEventListener('click', function(){
-        var i = parseInt(b.getAttribute('data-inc'));
-        var it = draftInvoice.items[i];
-        var p = findProduct(it.productId);
-        var stock = p ? p.qty : Infinity;
-        if(it.qty + 1 > stock){ showToast('Only '+stock+' in stock'); return; }
-        it.qty++;
-        refreshInvoiceSheet();
-      });
-    });
-    document.querySelectorAll('[data-dec]').forEach(function(b){
-      b.addEventListener('click', function(){
-        var i = parseInt(b.getAttribute('data-dec'));
-        draftInvoice.items[i].qty = Math.max(1, draftInvoice.items[i].qty-1);
-        refreshInvoiceSheet();
-      });
-    });
-    document.querySelectorAll('[data-qty]').forEach(function(inp){
-      inp.addEventListener('change', function(){
-        var i = parseInt(inp.getAttribute('data-qty'));
-        var it = draftInvoice.items[i];
-        var p = findProduct(it.productId);
-        var stock = p ? p.qty : Infinity;
-        var v = parseInt(inp.value);
-        if(!v || v<1) v = 1;
-        if(v > stock){ showToast('Only '+stock+' in stock'); v = stock; }
-        it.qty = v;
-        refreshInvoiceSheet();
-      });
-    });
-    document.querySelectorAll('[data-rm]').forEach(function(b){
-      b.addEventListener('click', function(){
-        var i = parseInt(b.getAttribute('data-rm'));
-        draftInvoice.items.splice(i,1);
-        refreshInvoiceSheet();
-      });
-    });
-  }
-
-  function addDraftItem(productId){
-    var p = findProduct(productId);
-    if(!p) return;
-    if(p.qty <= 0){ showToast(p.name+' is out of stock'); return; }
-    var existing = draftInvoice.items.find(function(it){ return it.productId===productId; });
-    if(existing){
-      if(existing.qty + 1 > p.qty){ showToast('Only '+p.qty+' in stock'); return; }
-      existing.qty++;
-    }
-    else{ draftInvoice.items.push({ productId:p.id, name:p.name, price:p.price, cost:(p.costPrice||0), qty:1 }); }
-    refreshInvoiceSheet();
-  }
-
-  function commitInvoice(){
-    if(draftInvoice.items.length===0){ showToast('Add at least one item'); return; }
-    if((draftInvoice.type==='credit' || draftInvoice.type==='partial') && !draftInvoice.customerId){ showToast('Pick or add a customer'); return; }
-
-    // Read the live value directly — on mobile, tapping Save right after typing
-    // can fire before the input's 'change' event, leaving the typed amount unsaved.
-    if(draftInvoice.type==='partial'){
-      var liveInput = document.getElementById('partial-paid');
-      if(liveInput){
-        var liveVal = parseFloat(liveInput.value);
-        draftInvoice.amountPaid = (liveVal>=0) ? liveVal : (draftInvoice.amountPaid||0);
-      }
-    }
-
-    // Final stock safety check — stock may have changed since items were added
-    for(var k=0; k<draftInvoice.items.length; k++){
-      var itChk = draftInvoice.items[k];
-      var pChk = findProduct(itChk.productId);
-      if(pChk && itChk.qty > pChk.qty){
-        showToast(pChk.name+' only has '+pChk.qty+' left — adjust quantity');
-        return;
-      }
-    }
-
-    var total = draftInvoice.items.reduce(function(s,it){ return s+it.qty*it.price; },0);
-    var amountPaid = 0;
-    var balanceDue = 0;
-    if(draftInvoice.type==='partial'){
-      amountPaid = Math.max(0, Math.min(draftInvoice.amountPaid||0, total));
-      balanceDue = total - amountPaid;
-    }
-
-    var inv = {
-      id: uid(),
-      number: state.nextInvoiceNo,
-      customerId: draftInvoice.customerId,
-      customerName: draftInvoice.type==='cash' ? (draftInvoice.customerName||'').trim() : '',
-      type: draftInvoice.type,
-      items: draftInvoice.items,
-      total: total,
-      amountPaid: draftInvoice.type==='partial' ? amountPaid : (draftInvoice.type==='cash' ? total : 0),
-      soldBy: currentUser ? currentUser.email : '',
-      createdAt: Date.now()
-    };
-    state.nextInvoiceNo++;
-    state.invoices.push(inv);
-
-    // decrement stock
-    draftInvoice.items.forEach(function(it){
-      var p = findProduct(it.productId);
-      if(p) p.qty = Math.max(0, p.qty - it.qty);
-    });
-
-    // add to customer balance for credit (full) or partial (remainder only)
-    if(draftInvoice.type==='credit' || draftInvoice.type==='partial'){
-      var c = findCustomer(draftInvoice.customerId);
-      var addAmount = draftInvoice.type==='credit' ? total : balanceDue;
-      if(c && addAmount > 0){
-        c.balance = (c.balance||0) + addAmount;
-        if(!c.debtSince) c.debtSince = Date.now();
-      }
-    }
-
-    saveData();
-    closeSheet();
-    view='invoices'; detail={type:'invoice', id:inv.id};
-    render();
-    showToast('Invoice #'+inv.number+' saved');
-  }
-
-  // ---------- RECEIPT TEXT (shared by WhatsApp share and the print QR code) ----------
-  function invoiceBalanceDue(inv){
-    if(inv.type==='credit') return inv.total;
-    if(inv.type==='partial') return Math.max(0, inv.total - (inv.amountPaid||0));
-    return 0;
-  }
-
-  function buildReceiptLines(inv){
-    var custName = invoiceCustName(inv);
-    var lines = [];
-    lines.push('*'+state.shopName+'*');
-    lines.push('Invoice #'+inv.number+' · '+new Date(inv.createdAt).toLocaleDateString());
-    lines.push('Customer: '+custName);
-    if(inv.soldBy) lines.push('Sold by: '+staffName(inv.soldBy));
-    lines.push('');
-    inv.items.forEach(function(it){
-      lines.push(it.name+' x'+it.qty+' — '+fmt(it.qty*it.price));
-    });
-    lines.push('');
-    lines.push('*Total: '+fmt(inv.total)+'*');
-    lines.push('Status: '+invStatusLong(inv));
-    var balance = invoiceBalanceDue(inv);
-    if(balance > 0) lines.push('*Balance due: '+fmt(balance)+'*');
-    lines.push('');
-    lines.push('Thank you for your business!');
-    return lines;
-  }
-
-  function receiptWhatsappUrl(inv){
-    return 'https://wa.me/?text=' + encodeURIComponent(buildReceiptLines(inv).join('\n'));
-  }
-
-  // ---------- PRINT ----------
-  function printInvoice(invId){
-    var inv = state.invoices.find(function(i){ return i.id===invId; });
-    if(!inv) return;
-    var custName = invoiceCustName(inv);
-    var logoEl = document.getElementById('pr-logo');
-    if(state.shopLogo){ logoEl.src = state.shopLogo; logoEl.style.display = 'block'; }
-    else { logoEl.style.display = 'none'; }
-    document.getElementById('pr-shop').textContent = state.shopName;
-    document.getElementById('pr-meta').textContent = 'Invoice #'+inv.number+' · '+new Date(inv.createdAt).toLocaleString()+' · '+custName;
-    var itemsHtml = '';
-    inv.items.forEach(function(it){
-      itemsHtml += '<div class="pr-row"><span>'+escapeHtml(it.name)+' x'+it.qty+'</span><span>'+fmt(it.qty*it.price)+'</span></div>';
-    });
-    document.getElementById('pr-items').innerHTML = itemsHtml;
-    document.getElementById('pr-total').textContent = fmt(inv.total);
-    document.getElementById('pr-status-row').innerHTML = '<span>Status</span><span>'+invStatusLong(inv).toUpperCase()+'</span>';
-
-    var balance = invoiceBalanceDue(inv);
-    var balanceEl = document.getElementById('pr-balance-row');
-    balanceEl.innerHTML = balance>0 ? '<span><strong>BALANCE DUE</strong></span><span><strong>'+fmt(balance)+'</strong></span>' : '';
-
-    var soldByEl = document.getElementById('pr-soldby-row');
-    soldByEl.innerHTML = inv.soldBy ? '<span>Sold by</span><span>'+escapeHtml(staffName(inv.soldBy))+'</span>' : '';
-
-    var qrEl = document.getElementById('pr-qr');
-    var qrCaption = document.getElementById('pr-qr-caption');
-    qrEl.innerHTML = '';
-    if(typeof QRCode !== 'undefined'){
-      try{
-        new QRCode(qrEl, { text: receiptWhatsappUrl(inv), width:90, height:90 });
-        qrCaption.style.display = 'block';
-      }catch(e){ qrCaption.style.display = 'none'; }
-    } else {
-      qrCaption.style.display = 'none';
-    }
-
-    window.print();
-  }
-
-  // ---------- WHATSAPP SHARE ----------
-  function shareInvoiceWhatsapp(invId){
-    var inv = state.invoices.find(function(i){ return i.id===invId; });
-    if(!inv) return;
-    window.open(receiptWhatsappUrl(inv), '_blank');
-  }
-
-  // ---------- SCANNER ----------
-  var scannerStream = null;
-  var scannerRAF = null;
-  var barcodeDetector = null;
-
-  function openScanSheet(){
-    openSheet({
-      html: function(){
-        return '<div class="sheet-head"><h2>Scan barcode</h2><button class="close" id="sheet-close">&times;</button></div>' +
-          '<div class="scanbox" id="scanbox"><video id="scan-video" autoplay playsinline muted></video></div>' +
-          '<div class="scan-note" id="scan-status">Starting camera…</div>' +
-          '<label>Or enter code manually</label>' +
-          '<div class="row-2">' +
-          '<div><input id="manual-code" class="num-input" placeholder="SKU or barcode"></div>' +
-          '<div><button class="secondary block" id="manual-go">Look up</button></div>' +
-          '</div>';
-      },
-      attach: function(){
-        document.getElementById('manual-go').addEventListener('click', function(){
-          handleScannedCode(document.getElementById('manual-code').value.trim());
-        });
-        document.getElementById('manual-code').addEventListener('keydown', function(e){
-          if(e.key==='Enter'){ handleScannedCode(e.target.value.trim()); }
-        });
-        startScanner();
-      }
-    });
-  }
-
-  function startScanner(){
-    var statusEl = document.getElementById('scan-status');
-    if(!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia){
-      statusEl.textContent = 'Camera not available — enter the code manually below.';
-      return;
-    }
-    if(!('BarcodeDetector' in window)){
-      statusEl.textContent = 'Live scanning isn\'t supported in this browser — enter the code manually below.';
-    }
-    navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } }).then(function(stream){
-      scannerStream = stream;
-      var video = document.getElementById('scan-video');
-      if(!video) { stream.getTracks().forEach(function(t){t.stop();}); return; }
-      video.srcObject = stream;
-      if('BarcodeDetector' in window){
-        statusEl.textContent = 'Point the camera at a barcode…';
-        try{
-          barcodeDetector = new window.BarcodeDetector();
-        }catch(e){ barcodeDetector = new window.BarcodeDetector({formats:['ean_13','ean_8','code_128','upc_a','upc_e','qr_code']}); }
-        scanLoop(video, statusEl);
-      }
-    }).catch(function(err){
-      statusEl.textContent = 'Camera access denied — enter the code manually below.';
-    });
-  }
-
-  function scanLoop(video, statusEl){
-    if(!document.getElementById('scan-video')){ return; } // sheet closed
-    barcodeDetector.detect(video).then(function(codes){
-      if(codes && codes.length>0){
-        handleScannedCode(codes[0].rawValue);
-        return;
-      }
-      scannerRAF = requestAnimationFrame(function(){ scanLoop(video, statusEl); });
-    }).catch(function(){
-      scannerRAF = requestAnimationFrame(function(){ scanLoop(video, statusEl); });
-    });
-  }
-
-  function stopScanner(){
-    if(scannerRAF) cancelAnimationFrame(scannerRAF);
-    scannerRAF = null;
-    barcodeDetector = null;
-    if(scannerStream){
-      scannerStream.getTracks().forEach(function(t){ t.stop(); });
-      scannerStream = null;
-    }
-  }
-
-  function handleScannedCode(code){
-    if(!code) return;
-    stopScanner();
-    var p = state.products.find(function(x){ return (x.sku||'').toLowerCase()===code.toLowerCase(); });
-    closeSheet();
-    if(p){
-      detail = {type:'product', id:p.id};
-      view = 'inventory';
-      render();
-      showToast('Found: '+p.name);
-    } else if(isOwner()){
-      openProductSheet(code);
-      showToast('No item with that code — add it');
-    } else {
-      showToast('No item with that code — ask the shop owner to add it');
-    }
-  }
-
-  // ---------- INIT ----------
-  loadData();
-
-})();
 </script>
 </body>
 </html>
