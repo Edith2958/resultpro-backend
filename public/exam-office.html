@@ -51,6 +51,7 @@
     border-radius: 18px;
     padding: 20px;
     margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
   }
 
   .topbar {
@@ -85,10 +86,7 @@
     font-family: 'Baloo 2', sans-serif;
     cursor: pointer;
     box-shadow: none;
-    text-transform: none;
-    letter-spacing: normal;
   }
-  .hamburger-btn:active { transform: none; box-shadow: none; }
   .tab-menu {
     display: none;
     position: absolute;
@@ -114,38 +112,36 @@
     font-size: 13px;
     font-weight: 700;
     font-family: 'Nunito', Arial, sans-serif;
-    text-transform: none;
-    letter-spacing: normal;
     cursor: pointer;
-    box-shadow: none;
     margin-bottom: 2px;
   }
-  .tab-menu button:active { transform: none; box-shadow: none; }
   .tab-menu button.active { background: var(--navy); color: #fff; }
-  .tab-menu button:hover:not(.active) { background: var(--cream); filter: none; }
+  .tab-menu button:hover:not(.active) { background: var(--cream); }
 
   label {
     font-size: 11px; color: var(--text-soft); display: block;
     margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px;
+    font-weight: 700;
   }
   input, select {
-    width: 100%; padding: 9px 10px; font-size: 13px;
-    border: 1px solid var(--border); border-radius: 4px;
+    width: 100%; padding: 10px 12px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 10px;
     background: var(--cream); color: var(--text); font-family: inherit;
+    transition: outline 0.1s, border-color 0.1s;
   }
-  input:focus, select:focus { outline: 2px solid var(--navy); outline-offset: 1px; }
+  input:focus, select:focus { outline: none; border-color: var(--navy); background: #fff; }
 
   .add-form {
     display: grid;
     grid-template-columns: 1fr 1fr auto;
-    gap: 8px;
+    gap: 10px;
     align-items: end;
     margin-bottom: 18px;
     padding-bottom: 18px;
     border-bottom: 1px solid var(--border);
   }
   .add-form.cols-4 { grid-template-columns: 1fr 1fr 1fr auto; }
-  @media (max-width: 600px) {
+  @media (max-width: 650px) {
     .add-form, .add-form.cols-4 { grid-template-columns: 1fr; }
   }
 
@@ -155,45 +151,54 @@
     border: none; border-radius: 12px; background: var(--navy);
     color: #fff; cursor: pointer; white-space: nowrap;
     box-shadow: 0 4px 0 var(--navy-light);
-    transition: transform 0.05s, box-shadow 0.05s;
+    transition: transform 0.05s, box-shadow 0.05s, filter 0.1s;
   }
   button.primary:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--navy-light); }
   button.primary:hover { filter: brightness(1.05); }
+  button.primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
   .list-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    gap: 12px;
   }
   .list-row:last-child { border-bottom: none; }
   .list-row .meta { color: var(--text-soft); font-size: 12px; }
 
   button.delete-btn {
     background: var(--fail-bg); color: var(--fail); border: none;
-    border-radius: 8px; padding: 5px 10px; font-size: 11px;
-    font-weight: bold; cursor: pointer; box-shadow: none; text-transform: none;
+    border-radius: 8px; padding: 6px 12px; font-size: 11px;
+    font-weight: bold; cursor: pointer; white-space: nowrap;
   }
 
   button.small {
     background: var(--cream); color: var(--navy); border: 1px solid var(--border);
-    border-radius: 8px; padding: 5px 10px; font-size: 11px;
-    font-weight: bold; cursor: pointer; box-shadow: none; text-transform: none;
-    margin-right: 4px; width: auto;
+    border-radius: 8px; padding: 6px 12px; font-size: 11px;
+    font-weight: bold; cursor: pointer; white-space: nowrap;
+    margin-right: 4px;
   }
-  button.small:active { transform: none; }
+
+  .badge {
+    padding: 4px 10px; font-size: 11px; font-weight: bold; border-radius: 8px; text-transform: uppercase;
+  }
+  .badge-draft { background: var(--cream); color: var(--text-soft); border: 1px solid var(--border); }
+  .badge-ready { background: var(--pass-bg); color: var(--pass); }
+  .badge-exhausted { background: var(--fail-bg); color: var(--fail); }
 
   .error-msg {
     font-size: 13px; color: var(--fail); background: var(--fail-bg);
-    border-radius: 4px; padding: 10px 12px; margin-bottom: 14px; display: none;
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; display: none;
   }
 
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    background: var(--navy); color: #fff; padding: 12px 20px;
-    border-radius: 6px; font-size: 13px; display: none;
+    background: #222; color: #fff; padding: 12px 20px;
+    border-radius: 12px; font-size: 13px; display: none; z-index: 9999;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15); font-weight: 600;
   }
 
   .empty-note { text-align: center; color: var(--text-soft); font-size: 13px; padding: 16px 0; }
-  .section-title { font-size: 14px; font-weight: bold; margin: 0 0 14px; }
+  .section-title { font-size: 15px; font-weight: 800; font-family: 'Baloo 2', sans-serif; margin: 0 0 14px; }
 </style>
 </head>
 <body>
@@ -208,10 +213,10 @@
   <div class="card">
     <div class="error-msg" id="loginError"></div>
     <label for="officerEmail">Email</label>
-    <input type="email" id="officerEmail" />
+    <input type="email" id="officerEmail" autocomplete="email" />
     <label for="officerPassword" style="margin-top:12px;">Password</label>
     <div style="position:relative; margin-bottom:16px;">
-      <input type="password" id="officerPassword" style="padding-right:64px;" />
+      <input type="password" id="officerPassword" autocomplete="current-password" style="padding-right:64px;" />
       <button type="button" onclick="togglePasswordVisibility('officerPassword', this)" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:auto; padding:4px 10px; font-size:10px; background:var(--cream); color:var(--navy); box-shadow:none; border:1px solid var(--border); border-radius:8px; text-transform:none; font-family:'Nunito',Arial,sans-serif; font-weight:700;">Show</button>
     </div>
     <button class="primary" style="width:100%;" onclick="login()">Log in</button>
@@ -428,7 +433,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const API_BASE = window.location.origin; // always same-origin — this server serves both the pages and the API
+  const API_BASE = window.location.origin; 
   let officer = null;
   let cache = { subjects: [], teachers: [], classes: [] };
 
@@ -497,7 +502,12 @@
       document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
     });
     document.querySelectorAll('.tab-menu button').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
+    
+    const clickedBtn = event ? event.currentTarget : null;
+    if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+      clickedBtn.classList.add('active');
+    }
+    
     document.getElementById('currentTabLabel').textContent = label;
     document.getElementById('tabMenu').classList.remove('open');
     if (tab === 'termSettings') loadTermSettings();
@@ -509,7 +519,6 @@
     document.getElementById('tabMenu').classList.toggle('open');
   }
 
-  // Close the menu if the person taps/clicks anywhere outside it
   document.addEventListener('click', (e) => {
     const bar = document.querySelector('.hamburger-bar');
     if (bar && !bar.contains(e.target)) {
@@ -524,17 +533,20 @@
   }
 
   function populateDropdowns() {
-    document.getElementById('newStudentClass').innerHTML = cache.classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    const filterOptions = cache.classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    document.getElementById('studentClassFilter').innerHTML = `<option value="">All classes</option>${filterOptions}`;
-    document.getElementById('feeClassFilter').innerHTML = `<option value="">All classes</option>${filterOptions}`;
+    const classOpts = cache.classes.length ? cache.classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('') : '<option value="">No classes available</option>';
+    document.getElementById('newStudentClass').innerHTML = classOpts;
+    document.getElementById('studentClassFilter').innerHTML = `<option value="">All classes</option>${classOpts}`;
+    document.getElementById('feeClassFilter').innerHTML = `<option value="">All classes</option>${classOpts}`;
+    
     document.getElementById('assignTeacher').innerHTML = cache.teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     document.getElementById('assignSubject').innerHTML = cache.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    document.getElementById('assignClass').innerHTML = cache.classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    document.getElementById('assignClass').innerHTML = classOpts;
+    
     document.getElementById('ftTeacher').innerHTML = cache.teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    document.getElementById('ftClass').innerHTML = cache.classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    document.getElementById('ftClass').innerHTML = classOpts;
+    
     document.getElementById('doTeacher').innerHTML = cache.teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    document.getElementById('doClass').innerHTML = cache.classes.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    document.getElementById('doClass').innerHTML = classOpts;
   }
 
   /* ---------------- STUDENTS ---------------- */
@@ -567,30 +579,34 @@
     if (search) params.set('search', search);
     if (classFilter) params.set('class', classFilter);
 
-    const res = await fetch(`${API_BASE}/api/exam-office/students?${params.toString()}`);
-    const data = await res.json();
-    const students = data.students || [];
-    lastStudentsList = students;
+    try {
+      const res = await fetch(`${API_BASE}/api/exam-office/students?${params.toString()}`);
+      const data = await res.json();
+      const students = data.students || [];
+      lastStudentsList = students;
 
-    const list = document.getElementById('studentsList');
-    list.innerHTML = students.length
-      ? students.map(s => `
-        <div class="list-row" id="student-row-${s.id}">
-          <span>${s.name} <span class="meta">— ${s.class}, admission no. ${s.admission_no}</span></span>
-          <span>
-            <button class="small" onclick="startEditStudent(${s.id})">Edit</button>
-            <button class="delete-btn" onclick="deleteItem('students', ${s.id}, loadStudents)">Delete</button>
-          </span>
-        </div>`).join('')
-      : `<p class="empty-note">No students found.</p>`;
+      const list = document.getElementById('studentsList');
+      list.innerHTML = students.length
+        ? students.map(s => `
+          <div class="list-row" id="student-row-${s.id}">
+            <span>${s.name} <span class="meta">— ${s.class}, admission no. ${s.admission_no}</span></span>
+            <span>
+              <button class="small" onclick="startEditStudent(${s.id})">Edit</button>
+              <button class="delete-btn" onclick="deleteItem('students', ${s.id}, loadStudents)">Delete</button>
+            </span>
+          </div>`).join('')
+        : `<p class="empty-note">No students found.</p>`;
 
-    const totalPages = Math.max(1, Math.ceil((data.total || 0) / STUDENTS_PER_PAGE));
-    document.getElementById('studentsPager').innerHTML = `
-      <span>${data.total || 0} student${data.total === 1 ? '' : 's'} total &middot; page ${studentPage} of ${totalPages}</span>
-      <span>
-        <button class="primary" style="padding:5px 10px; margin-right:6px;" onclick="goToStudentPage(-1)" ${studentPage <= 1 ? 'disabled' : ''}>Prev</button>
-        <button class="primary" style="padding:5px 10px;" onclick="goToStudentPage(1)" ${studentPage >= totalPages ? 'disabled' : ''}>Next</button>
-      </span>`;
+      const totalPages = Math.max(1, Math.ceil((data.total || 0) / STUDENTS_PER_PAGE));
+      document.getElementById('studentsPager').innerHTML = `
+        <span>${data.total || 0} student${data.total === 1 ? '' : 's'} total &middot; page ${studentPage} of ${totalPages}</span>
+        <span>
+          <button class="primary" style="padding:5px 10px; margin-right:6px;" onclick="goToStudentPage(-1)" ${studentPage <= 1 ? 'disabled' : ''}>Prev</button>
+          <button class="primary" style="padding:5px 10px;" onclick="goToStudentPage(1)" ${studentPage >= totalPages ? 'disabled' : ''}>Next</button>
+        </span>`;
+    } catch (err) {
+      showToast('Could not load students.');
+    }
   }
 
   function startEditStudent(id) {
@@ -600,8 +616,8 @@
     const classOptions = cache.classes.map(c => `<option value="${c.name}" ${c.name === s.class ? 'selected' : ''}>${c.name}</option>`).join('');
     row.innerHTML = `
       <div style="display:flex; gap:6px; flex:1; flex-wrap:wrap;">
-        <input type="text" id="edit-name-${id}" value="${s.name}" style="flex:1; min-width:120px; padding:6px 8px; font-size:12px; border:1px solid var(--border); border-radius:8px;" />
-        <input type="text" id="edit-admno-${id}" value="${s.admission_no}" style="width:80px; padding:6px 8px; font-size:12px; border:1px solid var(--border); border-radius:8px;" />
+        <input type="text" id="edit-name-${id}" value="${s.name}" onkeydown="if(event.key==='Enter') saveEditStudent(${id})" style="flex:1; min-width:120px; padding:6px 8px; font-size:12px; border:1px solid var(--border); border-radius:8px;" />
+        <input type="text" id="edit-admno-${id}" value="${s.admission_no}" onkeydown="if(event.key==='Enter') saveEditStudent(${id})" style="width:80px; padding:6px 8px; font-size:12px; border:1px solid var(--border); border-radius:8px;" />
         <select id="edit-class-${id}" style="width:auto; padding:6px 8px; font-size:12px; border:1px solid var(--border); border-radius:8px;">${classOptions}</select>
       </div>
       <span>
@@ -633,13 +649,17 @@
   async function bulkImportStudents() {
     const fileInput = document.getElementById('bulkImportFile');
     const file = fileInput.files[0];
-    if (!file) return showToast('Choose a file first.');
+    const resultEl = document.getElementById('bulkImportResult');
+    
+    if (!file) {
+      resultEl.innerHTML = '';
+      return showToast('Choose a file first.');
+    }
 
     const formData = new FormData();
     formData.append('file', file);
 
-    const resultEl = document.getElementById('bulkImportResult');
-    resultEl.innerHTML = `<p class="empty-note" style="padding:0;">Uploading…</p>`;
+    resultEl.innerHTML = `<p class="empty-note" style="padding:0;">Uploading and parsing file…</p>`;
 
     try {
       const res = await fetch(`${API_BASE}/api/exam-office/students/bulk-import`, {
@@ -648,17 +668,17 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      let html = `<p style="font-size:12px; font-weight:700; color:var(--pass); margin:0 0 6px;">${data.inserted} student${data.inserted === 1 ? '' : 's'} added.</p>`;
+      let html = `<p style="font-size:12px; font-weight:700; color:var(--pass); margin:0 0 6px;">${data.inserted} student${data.inserted === 1 ? '' : 's'} added successfully.</p>`;
       if (data.skipped && data.skipped.length > 0) {
         html += `<p style="font-size:11px; color:var(--fail); margin:0 0 4px;">${data.skipped.length} row${data.skipped.length === 1 ? '' : 's'} skipped:</p>`;
-        html += `<div style="font-size:11px; color:var(--text-soft); max-height:120px; overflow-y:auto;">${data.skipped.map(s => `Row ${s.row}: ${s.reason}`).join('<br>')}</div>`;
+        html += `<div style="font-size:11px; color:var(--text-soft); max-height:120px; overflow-y:auto; background:#fff; padding:6px; border-radius:6px; border:1px solid var(--border);">${data.skipped.map(s => `Row ${s.row}:${s.reason}`).join('<br>')}</div>`;
       }
       resultEl.innerHTML = html;
       fileInput.value = '';
       studentPage = 1;
       await loadStudents();
     } catch (err) {
-      resultEl.innerHTML = `<p style="font-size:12px; color:var(--fail); margin:0;">${err.message || 'Could not import file.'}</p>`;
+      resultEl.innerHTML = `<p style="font-size:12px; color:var(--fail); margin:0; background:var(--fail-bg); padding:8px; border-radius:6px;">${err.message || 'Could not import file.'}</p>`;
     }
   }
 
@@ -684,17 +704,21 @@
 
   /* ---------------- SUBJECTS ---------------- */
   async function loadSubjects() {
-    const res = await fetch(`${API_BASE}/api/exam-office/subjects`);
-    const data = await res.json();
-    cache.subjects = data.subjects || [];
-    const list = document.getElementById('subjectsList');
-    list.innerHTML = cache.subjects.length
-      ? cache.subjects.map(s => `
-        <div class="list-row">
-          <span>${s.name}</span>
-          <button class="delete-btn" onclick="deleteItem('subjects', ${s.id}, loadSubjects)">Delete</button>
-        </div>`).join('')
-      : `<p class="empty-note">No subjects yet.</p>`;
+    try {
+      const res = await fetch(`${API_BASE}/api/exam-office/subjects`);
+      const data = await res.json();
+      cache.subjects = data.subjects || [];
+      const list = document.getElementById('subjectsList');
+      list.innerHTML = cache.subjects.length
+        ? cache.subjects.map(s => `
+          <div class="list-row">
+            <span>${s.name}</span>
+            <button class="delete-btn" onclick="deleteItem('subjects', ${s.id}, loadSubjects)">Delete</button>
+          </div>`).join('')
+        : `<p class="empty-note">No subjects yet.</p>`;
+    } catch(err) {
+      showToast('Could not load subjects.');
+    }
   }
 
   async function addSubject() {
@@ -716,17 +740,21 @@
 
   /* ---------------- TEACHERS ---------------- */
   async function loadTeachers() {
-    const res = await fetch(`${API_BASE}/api/exam-office/teachers`);
-    const data = await res.json();
-    cache.teachers = data.teachers || [];
-    const list = document.getElementById('teachersList');
-    list.innerHTML = cache.teachers.length
-      ? cache.teachers.map(t => `
-        <div class="list-row">
-          <span>${t.name} <span class="meta">(${t.email})</span></span>
-          <button class="delete-btn" onclick="deleteItem('teachers', ${t.id}, loadTeachers)">Delete</button>
-        </div>`).join('')
-      : `<p class="empty-note">No teachers yet.</p>`;
+    try {
+      const res = await fetch(`${API_BASE}/api/exam-office/teachers`);
+      const data = await res.json();
+      cache.teachers = data.teachers || [];
+      const list = document.getElementById('teachersList');
+      list.innerHTML = cache.teachers.length
+        ? cache.teachers.map(t => `
+          <div class="list-row">
+            <span>${t.name} <span class="meta">(${t.email})</span></span>
+            <button class="delete-btn" onclick="deleteItem('teachers', ${t.id}, loadTeachers)">Delete</button>
+          </div>`).join('')
+        : `<p class="empty-note">No teachers yet.</p>`;
+    } catch (err) {
+      showToast('Could not load teachers.');
+    }
   }
 
   async function addTeacher() {
@@ -752,17 +780,21 @@
 
   /* ---------------- CLASSES ---------------- */
   async function loadClasses() {
-    const res = await fetch(`${API_BASE}/api/exam-office/classes`);
-    const data = await res.json();
-    cache.classes = data.classes || [];
-    const list = document.getElementById('classesList');
-    list.innerHTML = cache.classes.length
-      ? cache.classes.map(c => `
-        <div class="list-row">
-          <span>${c.name}</span>
-          <button class="delete-btn" onclick="deleteItem('classes', ${c.id}, loadClasses)">Delete</button>
-        </div>`).join('')
-      : `<p class="empty-note">No classes yet.</p>`;
+    try {
+      const res = await fetch(`${API_BASE}/api/exam-office/classes`);
+      const data = await res.json();
+      cache.classes = data.classes || [];
+      const list = document.getElementById('classesList');
+      list.innerHTML = cache.classes.length
+        ? cache.classes.map(c => `
+          <div class="list-row">
+            <span>${c.name}</span>
+            <button class="delete-btn" onclick="deleteItem('classes', ${c.id}, loadClasses)">Delete</button>
+          </div>`).join('')
+        : `<p class="empty-note">No classes yet.</p>`;
+    } catch (err) {
+      showToast('Could not load classes.');
+    }
   }
 
   async function addClass() {
@@ -783,16 +815,20 @@
 
   /* ---------------- ASSIGNMENTS ---------------- */
   async function loadAssignments() {
-    const res = await fetch(`${API_BASE}/api/exam-office/assignments`);
-    const data = await res.json();
-    const list = document.getElementById('assignmentsList');
-    list.innerHTML = (data.assignments || []).length
-      ? data.assignments.map(a => `
-        <div class="list-row">
-          <span>${a.teacher_name} <span class="meta">— ${a.subject_name}, ${a.class}</span></span>
-          <button class="delete-btn" onclick="deleteItem('assignments', ${a.id}, loadAssignments)">Remove</button>
-        </div>`).join('')
-      : `<p class="empty-note">No assignments yet.</p>`;
+    try {
+      const res = await fetch(`${API_BASE}/api/exam-office/assignments`);
+      const data = await res.json();
+      const list = document.getElementById('assignmentsList');
+      list.innerHTML = (data.assignments || []).length
+        ? data.assignments.map(a => `
+          <div class="list-row">
+            <span>${a.teacher_name} <span class="meta">— ${a.subject_name}, ${a.class}</span></span>
+            <button class="delete-btn" onclick="deleteItem('assignments', ${a.id}, loadAssignments)">Remove</button>
+          </div>`).join('')
+        : `<p class="empty-note">No assignments yet.</p>`;
+    } catch (err) {
+      showToast('Could not load assignments.');
+    }
   }
 
   async function addAssignment() {
@@ -814,16 +850,20 @@
 
   /* ---------------- FORM TEACHERS ---------------- */
   async function loadFormTeachers() {
-    const res = await fetch(`${API_BASE}/api/exam-office/form-teachers`);
-    const data = await res.json();
-    const list = document.getElementById('formTeachersList');
-    list.innerHTML = (data.formTeachers || []).length
-      ? data.formTeachers.map(f => `
-        <div class="list-row">
-          <span>${f.teacher_name} <span class="meta">— ${f.class}</span></span>
-          <button class="delete-btn" onclick="deleteItem('form-teachers', ${f.id}, loadFormTeachers)">Remove</button>
-        </div>`).join('')
-      : `<p class="empty-note">No form teachers assigned yet.</p>`;
+    try {
+      const res = await fetch(`${API_BASE}/api/exam-office/form-teachers`);
+      const data = await res.json();
+      const list = document.getElementById('formTeachersList');
+      list.innerHTML = (data.formTeachers || []).length
+        ? data.formTeachers.map(f => `
+          <div class="list-row">
+            <span>${f.teacher_name} <span class="meta">— ${f.class}</span></span>
+            <button class="delete-btn" onclick="deleteItem('form-teachers', ${f.id}, loadFormTeachers)">Remove</button>
+          </div>`).join('')
+        : `<p class="empty-note">No form teachers assigned yet.</p>`;
+    } catch (err) {
+      showToast('Could not load form teachers.');
+    }
   }
 
   async function addFormTeacher() {
@@ -854,6 +894,7 @@
       showToast('Deleted.');
     } catch (err) { showToast(err.message || 'Could not delete.'); }
   }
+
   /* ---------------- PINS (read-only) ---------------- */
   let officePinPage = 1;
   const OFFICE_PINS_PER_PAGE = 25;
@@ -988,6 +1029,7 @@
   function toDatetimeLocal(isoString) {
     if (!isoString) return '';
     const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
     const pad = n => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
@@ -1001,8 +1043,9 @@
       const res = await fetch(`${API_BASE}/api/term-settings?term=${encodeURIComponent(term)}&session=${encodeURIComponent(session)}`);
       const data = await res.json();
       const s = data.settings || {};
-      document.getElementById('tsTeacherDeadline').value = toDatetimeLocal(s.teacher_deadline);
-      document.getElementById('tsResultRelease').value = toDatetimeLocal(s.result_release_at);
+      
+      document.getElementById('tsTeacherDeadline').value = s.teacher_deadline ? toDatetimeLocal(s.teacher_deadline.endsWith('Z') || s.teacher_deadline.includes('+') ? s.teacher_deadline : s.teacher_deadline + 'Z') : '';
+      document.getElementById('tsResultRelease').value = s.result_release_at ? toDatetimeLocal(s.result_release_at.endsWith('Z') || s.result_release_at.includes('+') ? s.result_release_at : s.result_release_at + 'Z') : '';
 
       const info = document.getElementById('tsCurrentInfo');
       if (!s.teacher_deadline && !s.result_release_at) {
@@ -1074,23 +1117,26 @@
   async function saveTermSettings() {
     const term = document.getElementById('tsTerm').value;
     const session = document.getElementById('tsSession').value.trim();
-    const teacherDeadline = document.getElementById('tsTeacherDeadline').value;
-    const resultRelease = document.getElementById('tsResultRelease').value;
+    const teacherDeadlineVal = document.getElementById('tsTeacherDeadline').value;
+    const resultReleaseVal = document.getElementById('tsResultRelease').value;
 
     if (!session) return showToast('Enter a session.');
+
+    const teacherDeadline = teacherDeadlineVal ? new Date(teacherDeadlineVal).toISOString() : null;
+    const resultRelease = resultReleaseVal ? new Date(resultReleaseVal).toISOString() : null;
 
     try {
       const res = await fetch(`${API_BASE}/api/term-settings`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           term, session,
-          teacher_deadline: teacherDeadline || null,
-          result_release_at: resultRelease || null,
+          teacher_deadline: teacherDeadline,
+          result_release_at: resultRelease,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      showToast('Dates saved.');
+      showToast('Dates saved successfully.');
       loadTermSettings();
     } catch (err) {
       showToast(err.message || 'Could not save dates.');
