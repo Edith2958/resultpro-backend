@@ -388,6 +388,11 @@
 
     <div class="comments-block" id="commentsBlock"></div>
 
+    <div id="qrBlock" style="display:none; text-align:center; margin:16px 0 4px;">
+      <img id="qrImage" alt="QR code to verify this result" style="width:110px; height:110px;" />
+      <p style="font-size:11px; color:var(--text-soft); margin:4px 0 0;">Scan to confirm this result is genuine</p>
+    </div>
+
     <div style="display:flex; gap:8px;">
       <button class="secondary" onclick="window.print()" style="flex:1;">Print / Save as PDF</button>
       <button class="secondary" onclick="backToLogin()" style="flex:1;">Check another result</button>
@@ -612,6 +617,14 @@
     } else {
       commentsBlock.innerHTML = '';
     }
+
+    const qrBlock = document.getElementById('qrBlock');
+    if (data.verification && data.verification.qr) {
+      document.getElementById('qrImage').src = data.verification.qr;
+      qrBlock.style.display = 'block';
+    } else {
+      qrBlock.style.display = 'none';
+    }
   }
 
   function renderMidTermResult(data) {
@@ -665,6 +678,7 @@
     });
 
     document.getElementById('commentsBlock').innerHTML = '';
+    document.getElementById('qrBlock').style.display = 'none';
   }
 
   function backToLogin() {

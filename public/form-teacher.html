@@ -555,6 +555,11 @@
               <p style="font-weight:bold; font-size:15px; margin:0;">${s.name}</p>
               <p style="font-size:12px; color:var(--text-soft); margin:2px 0 0;">${data.class} &middot; Admission no. ${s.admission_no} &middot; ${data.term}, ${data.session}</p>
             </div>
+            ${slip.verification && slip.verification.qr ? `
+            <div style="margin-left:auto; text-align:center; flex-shrink:0;">
+              <img src="${slip.verification.qr}" alt="Verification QR code" style="width:72px; height:72px;" />
+              <p style="font-size:9px; color:var(--text-soft); margin:0;">Scan to verify</p>
+            </div>` : ''}
           </div>
 
           <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:14px;">

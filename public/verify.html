@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>ResultPro — Verify a result</title>
+<style>
+  :root {
+    --navy: #58CC02; --navy-light: #46A302; --gold: #FFC800; --cream: #F7F7F7;
+    --card: #FFFFFF; --border: #E5E5E5; --text: #3C3C3C; --text-soft: #777777;
+    --pass: #58A700; --pass-bg: #D7FFB8; --fail: #EA2B2B; --fail-bg: #FFDFE0;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Nunito', Arial, sans-serif; background:var(--cream); color:var(--text); min-height:100vh; padding:32px 16px; }
+  .wrap { max-width:440px; margin:0 auto; }
+  .brand { text-align:center; margin-bottom:22px; }
+  .crest { width:56px; height:56px; background:var(--navy); color:#fff; border-radius:18px; display:flex; align-items:center; justify-content:center; font-family:'Baloo 2', sans-serif; font-weight:800; font-size:22px; margin:0 auto 10px; box-shadow:0 5px 0 var(--navy-light); }
+  .brand h1 { font-family:'Baloo 2', sans-serif; font-size:22px; font-weight:800; margin:0; }
+  .brand p { font-size:12px; color:var(--text-soft); margin:2px 0 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:22px; text-align:center; }
+  .badge { display:inline-block; padding:6px 14px; border-radius:999px; font-weight:800; font-size:13px; margin-bottom:14px; }
+  .badge.ok { background:var(--pass-bg); color:var(--pass); }
+  .badge.bad { background:var(--fail-bg); color:var(--fail); }
+  .name { font-family:'Baloo 2', sans-serif; font-size:20px; font-weight:800; margin:0; }
+  .meta { font-size:12px; color:var(--text-soft); margin:2px 0 16px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .box { background:var(--cream); border-radius:12px; padding:10px; }
+  .box .label { font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-soft); margin:0; }
+  .box .value { font-size:18px; font-weight:800; margin:3px 0 0; }
+  .note { font-size:11px; color:var(--text-soft); margin:16px 0 0; }
+  .msg { font-size:14px; margin:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="crest">RP</div>
+    <h1>ResultPro</h1>
+    <p>Result verification</p>
+  </div>
+  <div class="card" id="card"><p class="msg">Checking this result…</p></div>
+</div>
+
+<script>
+  const API_BASE = window.location.origin;
+  const q = new URLSearchParams(window.location.search);
+
+  async function verify() {
+    const card = document.getElementById('card');
+    const params = new URLSearchParams({
+      student_id: q.get('s') || '', term: q.get('t') || '', session: q.get('y') || '', code: q.get('c') || '',
+    });
+    try {
+      const res = await fetch(`${API_BASE}/api/student/verify?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok || !data.valid) throw new Error(data.error || 'This result could not be verified.');
+
+      card.innerHTML = `
+        <span class="badge ok">✅ Genuine result</span>
+        <p class="name">${data.student.name}</p>
+        <p class="meta">${data.student.class} · Admission no. ${data.student.admission_no}<br>${data.term}, ${data.session}</p>
+        <div class="grid">
+          <div class="box"><p class="label">Total score</p><p class="value">${data.total_score} / ${data.max_obtainable}</p></div>
+          <div class="box"><p class="label">Average</p><p class="value">${data.average}%</p></div>
+        </div>
+        <p class="note">Compare these figures with the printed result. If they don't match, the paper has been altered.</p>`;
+    } catch (err) {
+      card.innerHTML = `
+        <span class="badge bad">❌ Could not verify</span>
+        <p class="msg">${err.message}</p>
+        <p class="note">If you scanned this from a printed result, treat that result as unconfirmed.</p>`;
+    }
+  }
+  verify();
+</script>
+</body>
+</html>

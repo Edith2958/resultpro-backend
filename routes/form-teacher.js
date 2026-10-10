@@ -4,7 +4,8 @@ const pool = require('../db/pool');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { getGrade, rankByTotal, ordinal } = require('../utils/grading');
+const { getGrade, rankByTotal, ordinal, getPrincipalComment } = require('../utils/grading');
+const { buildVerification } = require('../utils/verification');
 
 // Where uploaded student photos land: public/uploads/students/
 const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'students');
@@ -249,7 +250,7 @@ router.get('/class-result-slips', async (req, res) => {
     const termRecordMap = {};
     termRecordsRes.rows.forEach((r) => { termRecordMap[r.student_id] = r; });
 
-    const slips = students.map((s) => {
+    const slips = await Promise.all(students.map(async (s) => {
       const studentSubjects = subjects
         .map((sub) => {
           const cell = scoreMap[`${s.id}-${sub.id}`];
@@ -269,6 +270,11 @@ router.get('/class-result-slips', async (req, res) => {
 
       const termRecord = termRecordMap[s.id];
 
+      // Manual principal comment wins; otherwise it's chosen from the average.
+      const manualPrincipal = (termRecord?.principal_comment || '').trim();
+      const principalComment = manualPrincipal || getPrincipalComment(average, studentSubjects.length);
+      const verification = await buildVerification(req, s.id, term, session);
+
       return {
         student: { id: s.id, name: s.name, admission_no: s.admission_no, photo_url: s.photo_url },
         subjects: studentSubjects,
@@ -282,11 +288,13 @@ router.get('/class-result-slips', async (req, res) => {
         attendance: termRecord
           ? { present: termRecord.times_present, absent: termRecord.times_absent, total_days: termRecord.total_days }
           : null,
-        comments: termRecord
-          ? { form_teacher: termRecord.form_teacher_comment, principal: termRecord.principal_comment }
-          : null,
+        comments: {
+          form_teacher: termRecord ? termRecord.form_teacher_comment : null,
+          principal: principalComment,
+        },
+        verification,
       };
-    });
+    }));
 
     res.json({ class: className, term, session, slips });
   } catch (err) {

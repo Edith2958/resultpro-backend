@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
-const { getGrade, rankByTotal, ordinal } = require('../utils/grading');
+const { getGrade, rankByTotal, ordinal, getPrincipalComment } = require('../utils/grading');
+const { buildVerification, isValidVerifyCode } = require('../utils/verification');
 
 /**
  * POST /api/student/login
@@ -76,6 +77,72 @@ router.get('/midterm-result', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load mid-term result' });
+  }
+});
+
+/**
+ * GET /api/student/verify?student_id=&term=&session=&code=
+ * What the QR code on a printed result opens. Confirms the slip is genuine and shows
+ * only a small summary (name, class, term, total, average) — never the full result.
+ * The code can only be produced by this server, so it can't be guessed or faked.
+ */
+router.get('/verify', async (req, res) => {
+  const { student_id, term, session, code } = req.query;
+  if (!student_id || !term || !session || !isValidVerifyCode(student_id, term, session, code)) {
+    return res.status(404).json({ valid: false, error: 'This result could not be verified.' });
+  }
+
+  try {
+    const settingsRes = await pool.query(
+      'SELECT result_release_at FROM term_settings WHERE term = $1 AND session = $2',
+      [term, session]
+    );
+    const releaseAt = settingsRes.rows[0]?.result_release_at;
+    if (releaseAt && new Date(releaseAt) > new Date()) {
+      return res.status(403).json({ valid: false, error: 'These results have not been released yet.' });
+    }
+
+    const studentRes = await pool.query(
+      'SELECT name, admission_no, class FROM students WHERE id = $1',
+      [student_id]
+    );
+    if (studentRes.rows.length === 0) {
+      return res.status(404).json({ valid: false, error: 'This result could not be verified.' });
+    }
+    const student = studentRes.rows[0];
+
+    // Same scoring rule as the result page: CA comes from mid-term, or the manual CA if there's no mid-term.
+    const scoresRes = await pool.query(
+      `SELECT
+         CASE WHEN m.assignment_score IS NOT NULL OR m.test_score IS NOT NULL
+              THEN COALESCE(m.assignment_score, 0) + COALESCE(m.test_score, 0)
+              ELSE COALESCE(r.manual_ca_override, 0) END
+         + COALESCE(r.exam_score, 0) AS total
+       FROM results r
+       LEFT JOIN mid_term_results m
+         ON m.student_id = r.student_id AND m.subject_id = r.subject_id AND m.term = r.term AND m.session = r.session
+       WHERE r.student_id = $1 AND r.term = $2 AND r.session = $3`,
+      [student_id, term, session]
+    );
+    if (scoresRes.rows.length === 0) {
+      return res.status(404).json({ valid: false, error: 'No result found for this student.' });
+    }
+
+    const totalScore = scoresRes.rows.reduce((sum, r) => sum + Number(r.total), 0);
+    const maxObtainable = scoresRes.rows.length * 100;
+    const average = Number(((totalScore / maxObtainable) * 100).toFixed(1));
+
+    res.json({
+      valid: true,
+      student: { name: student.name, admission_no: student.admission_no, class: student.class },
+      term, session,
+      total_score: totalScore,
+      max_obtainable: maxObtainable,
+      average,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ valid: false, error: 'Verification failed. Please try again.' });
   }
 });
 
@@ -232,6 +299,13 @@ router.get('/result', async (req, res) => {
     );
     const termRecord = termRecordRes.rows[0] || null;
 
+    // Principal's comment: a manually saved one wins; otherwise it's chosen from the average.
+    const manualPrincipal = (termRecord?.principal_comment || '').trim();
+    const principalComment = manualPrincipal || getPrincipalComment(average, subjects.length);
+
+    // QR code + link that lets anyone holding the printed slip confirm it's genuine.
+    const verification = await buildVerification(req, student.id, term, session);
+
     res.json({
       student: { id: student.id, name: student.name, admission_no: student.admission_no, class: student.class, photo_url: student.photo_url },
       term, session,
@@ -246,9 +320,11 @@ router.get('/result', async (req, res) => {
       attendance: termRecord
         ? { present: termRecord.times_present, absent: termRecord.times_absent, total_days: termRecord.total_days }
         : null,
-      comments: termRecord
-        ? { form_teacher: termRecord.form_teacher_comment, principal: termRecord.principal_comment }
-        : null,
+      comments: {
+        form_teacher: termRecord ? termRecord.form_teacher_comment : null,
+        principal: principalComment,
+      },
+      verification,
     });
   } catch (err) {
     console.error(err);
