@@ -2,25 +2,15 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const crypto = require('crypto');
 const { getGrade, rankByTotal, ordinal, getPrincipalComment } = require('../utils/grading');
 const { buildVerification } = require('../utils/verification');
 
-// Where uploaded student photos land: public/uploads/students/
-const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'students');
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `student-${req.body.student_id}-${Date.now()}${ext}`);
-  },
-});
+// Photos are kept in memory just long enough to save them into the database —
+// nothing is written to the server's disk (Render wipes that on every redeploy).
 const upload = multer({
-  storage,
-  limits: { fileSize: 3 * 1024 * 1024 }, // 3MB max
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 1024 * 1024 }, // 1MB — the page already shrinks photos to ~30KB
   fileFilter: (req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     cb(null, allowed.includes(file.mimetype));
@@ -402,33 +392,60 @@ router.post('/term-records', async (req, res) => {
 /**
  * POST /api/form-teacher/upload-photo
  * multipart/form-data with fields: student_id, class, teacher_id, and a file field named "photo"
- * Saves the file to public/uploads/students/ and updates students.photo_url.
+ * Saves the photo into the database (student_photos) and points students.photo_url at it.
  */
-router.post('/upload-photo', upload.single('photo'), async (req, res) => {
-  const { student_id, class: className, teacher_id } = req.body;
+router.post(
+  '/upload-photo',
+  (req, res, next) => {
+    // Run multer by hand so a too-big file gives a clear message instead of a crash.
+    upload.single('photo')(req, res, (err) => {
+      if (err) {
+        const tooBig = err.code === 'LIMIT_FILE_SIZE';
+        return res.status(400).json({ error: tooBig ? 'That photo is too large (max 1MB).' : 'Upload failed. Please try again.' });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    const { student_id, class: className, teacher_id } = req.body;
 
-  if (!student_id || !className || !teacher_id) {
-    return res.status(400).json({ error: 'student_id, class and teacher_id are required' });
-  }
-  if (!req.file) {
-    return res.status(400).json({ error: 'No photo file received, or the file type is not supported (use JPG, PNG or WEBP)' });
-  }
-
-  try {
-    if (!(await isFormTeacherOf(teacher_id, className))) {
-      // Clean up the file we just saved, since this teacher isn't allowed to make this change
-      fs.unlink(req.file.path, () => {});
-      return res.status(403).json({ error: 'You are not the form teacher for this class' });
+    if (!student_id || !className || !teacher_id) {
+      return res.status(400).json({ error: 'student_id, class and teacher_id are required' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No photo file received, or the file type is not supported (use JPG, PNG or WEBP)' });
     }
 
-    const publicPath = `/uploads/students/${req.file.filename}`;
-    await pool.query('UPDATE students SET photo_url = $1 WHERE id = $2', [publicPath, student_id]);
+    try {
+      if (!(await isFormTeacherOf(teacher_id, className))) {
+        return res.status(403).json({ error: 'You are not the form teacher for this class' });
+      }
 
-    res.json({ success: true, photo_url: publicPath });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to save photo' });
+      // The student must actually be in this teacher's class.
+      const studentRes = await pool.query('SELECT 1 FROM students WHERE id = $1 AND class = $2', [student_id, className]);
+      if (studentRes.rows.length === 0) {
+        return res.status(403).json({ error: 'That student is not in your class' });
+      }
+
+      // A new random token on every upload: the link can't be guessed, and browsers never show an old cached photo.
+      const token = crypto.randomBytes(16).toString('hex');
+      await pool.query(
+        `INSERT INTO student_photos (student_id, token, mime_type, data, updated_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (student_id)
+         DO UPDATE SET token = $2, mime_type = $3, data = $4, updated_at = NOW()`,
+        [student_id, token, req.file.mimetype, req.file.buffer]
+      );
+
+      const photoUrl = `/api/student/photo/${token}`;
+      await pool.query('UPDATE students SET photo_url = $1 WHERE id = $2', [photoUrl, student_id]);
+
+      res.json({ success: true, photo_url: photoUrl });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to save photo' });
+    }
   }
-});
+);
 
 module.exports = router;

@@ -81,6 +81,25 @@ router.get('/midterm-result', async (req, res) => {
 });
 
 /**
+ * GET /api/student/photo/:token
+ * Serves a student's photo from the database. The token is random and unguessable,
+ * and changes whenever a new photo is uploaded, so it is safe to cache for a long time.
+ */
+router.get('/photo/:token', async (req, res) => {
+  if (!/^[a-f0-9]{32}$/.test(req.params.token)) return res.status(404).end();
+  try {
+    const { rows } = await pool.query('SELECT mime_type, data FROM student_photos WHERE token = $1', [req.params.token]);
+    if (rows.length === 0) return res.status(404).end();
+    res.set('Content-Type', rows[0].mime_type);
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.send(rows[0].data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).end();
+  }
+});
+
+/**
  * GET /api/student/verify?student_id=&term=&session=&code=
  * What the QR code on a printed result opens. Confirms the slip is genuine and shows
  * only a small summary (name, class, term, total, average) — never the full result.
