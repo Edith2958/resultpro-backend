@@ -15,11 +15,20 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'admission_no and surname are required' });
   }
 
+  const typed = String(surname).trim();
+  if (typed.length < 2) {
+    return res.status(400).json({ error: 'Please enter your surname' });
+  }
+
   try {
+    // The typed surname must match a WHOLE word of the student's name (or the whole name) —
+    // never just a few letters, and never wildcard characters like % or _.
     const { rows } = await pool.query(
       `SELECT id, name, admission_no, class, photo_url FROM students
-       WHERE admission_no = $1 AND name ILIKE $2`,
-      [admission_no, `%${surname}%`]
+       WHERE admission_no = $1
+         AND ( lower(trim(name)) = lower($2)
+               OR lower($2) = ANY(regexp_split_to_array(lower(trim(name)), '[\\s,]+')) )`,
+      [String(admission_no).trim(), typed]
     );
 
     if (rows.length === 0) {
@@ -57,6 +66,7 @@ router.get('/midterm-result', async (req, res) => {
        FROM mid_term_results m
        JOIN subjects sub ON sub.id = m.subject_id
        WHERE m.student_id = $1 AND m.term = $2 AND m.session = $3
+         AND (m.assignment_score IS NOT NULL OR m.test_score IS NOT NULL)
        ORDER BY sub.name ASC`,
       [student_id, term, session]
     );
@@ -336,7 +346,7 @@ router.get('/result', async (req, res) => {
         class_position: myClassRank ? ordinal(myClassRank.position) : '-',
         class_size: classRanked.length,
       },
-      attendance: termRecord
+      attendance: termRecord && (termRecord.times_present != null || termRecord.times_absent != null || termRecord.total_days != null)
         ? { present: termRecord.times_present, absent: termRecord.times_absent, total_days: termRecord.total_days }
         : null,
       comments: {

@@ -275,7 +275,7 @@ router.get('/class-result-slips', async (req, res) => {
           class_position: ordinal(classRankMap[s.id]),
           class_size: students.length,
         },
-        attendance: termRecord
+        attendance: termRecord && (termRecord.times_present != null || termRecord.times_absent != null || termRecord.total_days != null)
           ? { present: termRecord.times_present, absent: termRecord.times_absent, total_days: termRecord.total_days }
           : null,
         comments: {
@@ -357,6 +357,15 @@ router.post('/term-records', async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // Same rule as the score screens: a field that was SENT (even empty) is saved as sent,
+    // so clearing a comment works; a field that was NOT sent is left exactly as it is.
+    const FIELDS = ['times_present', 'times_absent', 'total_days', 'form_teacher_comment', 'principal_comment'];
+    const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+    const clean = (v) => (v === undefined || v === null || (typeof v === 'string' && v.trim() === '') ? null : v);
+    const setClause = FIELDS
+      .map((f, i) => `${f} = CASE WHEN $${10 + i}::boolean THEN EXCLUDED.${f} ELSE term_records.${f} END`)
+      .join(',\n           ');
+
     for (const r of records) {
       await client.query(
         `INSERT INTO term_records
@@ -365,15 +374,11 @@ router.post('/term-records', async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          ON CONFLICT (student_id, term, session)
          DO UPDATE SET
-           times_present = COALESCE(EXCLUDED.times_present, term_records.times_present),
-           times_absent = COALESCE(EXCLUDED.times_absent, term_records.times_absent),
-           total_days = COALESCE(EXCLUDED.total_days, term_records.total_days),
-           form_teacher_comment = COALESCE(EXCLUDED.form_teacher_comment, term_records.form_teacher_comment),
-           principal_comment = COALESCE(EXCLUDED.principal_comment, term_records.principal_comment)`,
+           ${setClause}`,
         [
           r.student_id, className, term, session,
-          r.times_present ?? null, r.times_absent ?? null, r.total_days ?? null,
-          r.form_teacher_comment ?? null, r.principal_comment ?? null,
+          ...FIELDS.map((f) => clean(r[f])),
+          ...FIELDS.map((f) => has(r, f)),
         ]
       );
     }

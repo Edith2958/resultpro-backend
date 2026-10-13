@@ -70,6 +70,45 @@ async function isAssigned(teacherId, className, subjectId) {
   return rows.length > 0;
 }
 
+// ---- Helpers for saving scores ----------------------------------------------
+// "Was this field sent at all?" — lets us tell apart "teacher cleared this box"
+// (the field is sent as empty) from "this save doesn't touch this field" (not sent).
+const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+// A cleared box arrives as null or ''. Anything else becomes a number.
+const toScore = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+
+// Empty is fine (it means "cleared"). Otherwise the value must be a number from 0 to max.
+function scoreProblem(value, max, label) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > max) return `${label} must be a number from 0 to ${max}`;
+  return null;
+}
+
+/**
+ * Checks a whole batch before anything is saved, so a bad row never leaves a half-saved class.
+ * rules = [{ key, max, label }]. Returns an error message, or null if everything is fine.
+ */
+async function validateScoreBatch(scores, className, rules) {
+  const ids = scores.map((s) => Number(s.student_id));
+  if (ids.some((id) => !Number.isInteger(id))) return 'Every row needs a valid student.';
+
+  // Every student in the batch must really be in this class.
+  const inClass = await pool.query('SELECT id, name FROM students WHERE class = $1 AND id = ANY($2::int[])', [className, ids]);
+  const names = new Map(inClass.rows.map((r) => [r.id, r.name]));
+  if (names.size !== new Set(ids).size) return 'Some of these students are not in this class.';
+
+  for (const s of scores) {
+    for (const r of rules) {
+      if (!has(s, r.key)) continue;
+      const problem = scoreProblem(s[r.key], r.max, r.label);
+      if (problem) return `${names.get(Number(s.student_id))}: ${problem}.`;
+    }
+  }
+  return null;
+}
+
 /**
  * Blocks saving once the term's teacher_deadline has passed, UNLESS the exam office
  * has granted this specific teacher an override for this class+term+session.
@@ -168,27 +207,43 @@ router.post('/midterm-scores', async (req, res) => {
     return res.status(403).json({ error: deadlineError, deadline_passed: true });
   }
 
+  const batchProblem = await validateScoreBatch(scores, className, [
+    { key: 'assignment_score', max: 15, label: 'Assignment score' },
+    { key: 'test_score', max: 15, label: 'Test score' },
+  ]);
+  if (batchProblem) return res.status(400).json({ error: batchProblem });
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     for (const s of scores) {
-      // Upsert: insert new row, or update only the fields provided (COALESCE keeps existing values)
+      // Upsert. A field that was SENT (even as empty) is saved exactly as sent, so clearing works.
+      // A field that was NOT sent keeps whatever is already stored, so partial entry still works.
       await client.query(
         `INSERT INTO mid_term_results
            (student_id, subject_id, teacher_id, class, term, session, assignment_score, test_score, status, updated_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW())
          ON CONFLICT (student_id, subject_id, term, session)
          DO UPDATE SET
-           assignment_score = COALESCE(EXCLUDED.assignment_score, mid_term_results.assignment_score),
-           test_score = COALESCE(EXCLUDED.test_score, mid_term_results.test_score),
+           assignment_score = CASE WHEN $10::boolean THEN EXCLUDED.assignment_score ELSE mid_term_results.assignment_score END,
+           test_score       = CASE WHEN $11::boolean THEN EXCLUDED.test_score       ELSE mid_term_results.test_score       END,
            status = COALESCE(EXCLUDED.status, mid_term_results.status),
            teacher_id = EXCLUDED.teacher_id,
            updated_at = NOW()`,
         [
           s.student_id, subject_id, teacher_id, className, term, session,
-          s.assignment_score ?? null, s.test_score ?? null, s.status || 'draft',
+          toScore(s.assignment_score), toScore(s.test_score), s.status || 'draft',
+          has(s, 'assignment_score'), has(s, 'test_score'),
         ]
+      );
+
+      // A record with no scores in it isn't a record. Remove it, so it never shows up for the student.
+      await client.query(
+        `DELETE FROM mid_term_results
+         WHERE student_id = $1 AND subject_id = $2 AND term = $3 AND session = $4
+           AND assignment_score IS NULL AND test_score IS NULL`,
+        [s.student_id, subject_id, term, session]
       );
     }
 
@@ -286,6 +341,12 @@ router.post('/fullterm-scores', async (req, res) => {
     return res.status(403).json({ error: deadlineError, deadline_passed: true });
   }
 
+  const batchProblem = await validateScoreBatch(scores, className, [
+    { key: 'exam_score', max: 70, label: 'Exam score' },
+    { key: 'manual_ca_override', max: 30, label: 'CA score' },
+  ]);
+  if (batchProblem) return res.status(400).json({ error: batchProblem });
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -297,15 +358,24 @@ router.post('/fullterm-scores', async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW())
          ON CONFLICT (student_id, subject_id, term, session)
          DO UPDATE SET
-           exam_score = COALESCE(EXCLUDED.exam_score, results.exam_score),
-           manual_ca_override = COALESCE(EXCLUDED.manual_ca_override, results.manual_ca_override),
+           exam_score         = CASE WHEN $10::boolean THEN EXCLUDED.exam_score         ELSE results.exam_score         END,
+           manual_ca_override = CASE WHEN $11::boolean THEN EXCLUDED.manual_ca_override ELSE results.manual_ca_override END,
            status = COALESCE(EXCLUDED.status, results.status),
            teacher_id = EXCLUDED.teacher_id,
            updated_at = NOW()`,
         [
           s.student_id, subject_id, teacher_id, className, term, session,
-          s.exam_score ?? null, s.manual_ca_override ?? null, s.status || 'draft',
+          toScore(s.exam_score), toScore(s.manual_ca_override), s.status || 'draft',
+          has(s, 'exam_score'), has(s, 'manual_ca_override'),
         ]
+      );
+
+      // Nothing left in the record (no exam, no manual CA) — remove it.
+      await client.query(
+        `DELETE FROM results
+         WHERE student_id = $1 AND subject_id = $2 AND term = $3 AND session = $4
+           AND exam_score IS NULL AND manual_ca_override IS NULL`,
+        [s.student_id, subject_id, term, session]
       );
     }
 
