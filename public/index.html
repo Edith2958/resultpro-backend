@@ -595,7 +595,7 @@
       tr.innerHTML = `
         <td>${s.subject_name}</td>
         <td class="num">${s.ca}</td>
-        <td class="num">${s.exam}</td>
+        <td class="num">${s.absent ? '<span style="color:var(--fail); font-weight:700;">Absent</span>' : s.exam}</td>
         <td class="num"><strong>${s.total}</strong></td>
         <td class="num">${s.highest ?? '—'}</td>
         <td class="num">${s.position ?? '—'}</td>

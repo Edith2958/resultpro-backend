@@ -569,7 +569,7 @@
         <tr>
           <td style="padding:6px 4px; border-bottom:1px solid var(--border);">${sub.subject_name}</td>
           <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.ca}</td>
-          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.exam}</td>
+          <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.absent ? '<span style="color:var(--fail); font-weight:700;">Absent</span>' : sub.exam}</td>
           <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border); font-weight:bold;">${sub.total}</td>
           <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.highest ?? '—'}</td>
           <td style="text-align:right; padding:6px 4px; border-bottom:1px solid var(--border);">${sub.position}</td>

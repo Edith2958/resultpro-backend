@@ -275,7 +275,7 @@ router.get('/fullterm-roster', async (req, res) => {
     const { rows } = await pool.query(
       `SELECT s.id AS student_id, s.name, s.admission_no,
               m.assignment_score, m.test_score,
-              r.exam_score, r.manual_ca_override, r.status AS result_status
+              r.exam_score, r.exam_absent, r.manual_ca_override, r.status AS result_status
        FROM students s
        LEFT JOIN mid_term_results m
          ON m.student_id = s.id AND m.subject_id = $2 AND m.term = $3 AND m.session = $4
@@ -297,8 +297,10 @@ router.get('/fullterm-roster', async (req, res) => {
         ? (r.manual_ca_override !== null ? Number(r.manual_ca_override) : null)
         : midTermTotal;
 
-      const exam = r.exam_score !== null ? Number(r.exam_score) : null;
-      const total = ca !== null && exam !== null ? ca + exam : null;
+      const absent = r.exam_absent === true;
+      // Absent = the exam counts as 0, so the student still gets a total (CA only).
+      const exam = absent ? null : (r.exam_score !== null ? Number(r.exam_score) : null);
+      const total = ca !== null && (absent || exam !== null) ? ca + (absent ? 0 : exam) : null;
       const { grade, remark } = getGrade(total);
 
       return {
@@ -308,6 +310,7 @@ router.get('/fullterm-roster', async (req, res) => {
         ca,
         needs_manual_ca: needsManualCA,
         exam_score: exam,
+        exam_absent: absent,
         total_score: total,
         grade,
         remark,
@@ -352,29 +355,39 @@ router.post('/fullterm-scores', async (req, res) => {
     await client.query('BEGIN');
 
     for (const s of scores) {
+      // Absent wins: if the teacher marked the student absent, there is no exam score.
+      // Typing a real exam score (without saying anything about absent) means they DID sit it.
+      let examValue = toScore(s.exam_score);
+      let sendExam = has(s, 'exam_score');
+      let absentValue = has(s, 'exam_absent') ? s.exam_absent === true : false;
+      let sendAbsent = has(s, 'exam_absent');
+      if (absentValue) { examValue = null; sendExam = true; }
+      else if (!sendAbsent && sendExam && examValue !== null) { absentValue = false; sendAbsent = true; }
+
       await client.query(
         `INSERT INTO results
-           (student_id, subject_id, teacher_id, class, term, session, exam_score, manual_ca_override, status, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW())
+           (student_id, subject_id, teacher_id, class, term, session, exam_score, exam_absent, manual_ca_override, status, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW())
          ON CONFLICT (student_id, subject_id, term, session)
          DO UPDATE SET
-           exam_score         = CASE WHEN $10::boolean THEN EXCLUDED.exam_score         ELSE results.exam_score         END,
-           manual_ca_override = CASE WHEN $11::boolean THEN EXCLUDED.manual_ca_override ELSE results.manual_ca_override END,
+           exam_score         = CASE WHEN $11::boolean THEN EXCLUDED.exam_score         ELSE results.exam_score         END,
+           exam_absent        = CASE WHEN $12::boolean THEN EXCLUDED.exam_absent        ELSE results.exam_absent        END,
+           manual_ca_override = CASE WHEN $13::boolean THEN EXCLUDED.manual_ca_override ELSE results.manual_ca_override END,
            status = COALESCE(EXCLUDED.status, results.status),
            teacher_id = EXCLUDED.teacher_id,
            updated_at = NOW()`,
         [
           s.student_id, subject_id, teacher_id, className, term, session,
-          toScore(s.exam_score), toScore(s.manual_ca_override), s.status || 'draft',
-          has(s, 'exam_score'), has(s, 'manual_ca_override'),
+          examValue, absentValue, toScore(s.manual_ca_override), s.status || 'draft',
+          sendExam, sendAbsent, has(s, 'manual_ca_override'),
         ]
       );
 
-      // Nothing left in the record (no exam, no manual CA) — remove it.
+      // Nothing left in the record (no exam, not absent, no manual CA) — remove it.
       await client.query(
         `DELETE FROM results
          WHERE student_id = $1 AND subject_id = $2 AND term = $3 AND session = $4
-           AND exam_score IS NULL AND manual_ca_override IS NULL`,
+           AND exam_score IS NULL AND exam_absent = false AND manual_ca_override IS NULL`,
         [s.student_id, subject_id, term, session]
       );
     }

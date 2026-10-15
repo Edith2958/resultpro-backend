@@ -182,7 +182,7 @@ router.get('/class-result-slips', async (req, res) => {
 
     const scoresRes = await pool.query(
       `SELECT r.student_id, r.subject_id,
-              m.assignment_score, m.test_score, r.exam_score, r.manual_ca_override
+              m.assignment_score, m.test_score, r.exam_score, r.exam_absent, r.manual_ca_override
        FROM results r
        LEFT JOIN mid_term_results m
          ON m.student_id = r.student_id AND m.subject_id = r.subject_id AND m.term = r.term AND m.session = r.session
@@ -199,7 +199,7 @@ router.get('/class-result-slips', async (req, res) => {
       const ca = midTermTotal !== null ? midTermTotal : Number(row.manual_ca_override || 0);
       const exam = Number(row.exam_score || 0);
       const total = ca + exam;
-      scoreMap[`${row.student_id}-${row.subject_id}`] = { ca, exam, total, ...getGrade(total) };
+      scoreMap[`${row.student_id}-${row.subject_id}`] = { ca, exam, absent: row.exam_absent === true, total, ...getGrade(total) };
     }
 
     // Per-subject highest + position, computed once across the whole class (not per student)
@@ -248,7 +248,7 @@ router.get('/class-result-slips', async (req, res) => {
           const rank = subjectRankings[sub.id][s.id] || { highest: null, position: '-' };
           return {
             subject_name: sub.name,
-            ca: cell.ca, exam: cell.exam, total: cell.total, grade: cell.grade,
+            ca: cell.ca, exam: cell.exam, absent: cell.absent, total: cell.total, grade: cell.grade,
             highest: rank.highest, position: rank.position,
           };
         })

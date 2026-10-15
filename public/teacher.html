@@ -537,6 +537,7 @@
           <th>Student</th>
           <th class="num">CA (30)</th>
           <th class="num">Exam (70)</th>
+          <th class="num">Absent</th>
           <th class="num">Total</th>
           <th class="num">Grade</th>
         </tr>`;
@@ -545,6 +546,7 @@
           <td>
             <span class="student-name">${s.name}</span>
             ${s.needs_manual_ca ? '<div class="student-flag">No mid-term record</div>' : ''}
+            <div class="student-flag" id="exam-flag-${i}">${needsExam(s) ? 'Exam not entered yet' : ''}</div>
           </td>
           <td class="num">
             ${s.needs_manual_ca
@@ -552,7 +554,8 @@
               : `<input class="score-input" type="number" value="${s.ca ?? 0}" disabled />`}
           </td>
           <td class="num"><input class="score-input" type="number" min="0" max="70"
-              value="${s.exam_score ?? ''}" oninput="updateFullTermRow(${i})" id="exam-${i}" /></td>
+              value="${s.exam_score ?? ''}" oninput="updateFullTermRow(${i})" id="exam-${i}" ${s.exam_absent ? 'disabled' : ''} /></td>
+          <td class="num"><input type="checkbox" id="absent-${i}" ${s.exam_absent ? 'checked' : ''} onchange="toggleAbsent(${i})" style="width:18px; height:18px; cursor:pointer;" title="Tick if the student missed this exam" /></td>
           <td class="num total-cell" id="total-${i}">${s.total_score ?? '—'}</td>
           <td class="num" id="grade-${i}">${s.grade ? `<span class="grade-pill grade-${s.grade}">${s.grade}</span>` : '—'}</td>
         </tr>`).join('');
@@ -590,21 +593,40 @@
     return 'F';
   }
 
+  // True when a student has a CA but no exam score and isn't marked absent —
+  // that subject would be silently left off their result, so we flag it.
+  function needsExam(s) {
+    return s.ca !== null && s.ca !== undefined && (s.exam_score === null || s.exam_score === undefined) && !s.exam_absent;
+  }
+
+  function toggleAbsent(i) {
+    const absent = document.getElementById(`absent-${i}`).checked;
+    const examInput = document.getElementById(`exam-${i}`);
+    if (absent) examInput.value = '';
+    examInput.disabled = absent;
+    updateFullTermRow(i);
+  }
+
   function updateFullTermRow(i) {
     const caInput = document.getElementById(`ca-${i}`);
     const ca = caInput ? (caInput.value === '' ? null : Number(caInput.value)) : currentRoster[i].ca;
     const examInput = document.getElementById(`exam-${i}`);
-    const exam = examInput.value === '' ? null : Number(examInput.value);
+    const absent = document.getElementById(`absent-${i}`).checked;
+    const exam = absent ? null : (examInput.value === '' ? null : Number(examInput.value));
 
+    currentRoster[i].ca = ca;
     currentRoster[i].manual_ca_override = currentRoster[i].needs_manual_ca ? ca : null;
     currentRoster[i].exam_score = exam;
+    currentRoster[i].exam_absent = absent;
 
-    const total = (ca !== null && exam !== null) ? ca + exam : null;
+    // Absent counts as an exam score of 0, so the student still gets a total (CA only).
+    const total = (ca !== null && (absent || exam !== null)) ? ca + (absent ? 0 : exam) : null;
     currentRoster[i].total_score = total;
 
     document.getElementById(`total-${i}`).textContent = total ?? '—';
     const grade = getGrade(total);
     document.getElementById(`grade-${i}`).innerHTML = grade ? `<span class="grade-pill grade-${grade}">${grade}</span>` : '—';
+    document.getElementById(`exam-flag-${i}`).textContent = needsExam(currentRoster[i]) ? 'Exam not entered yet' : '';
 
     updateScoredCount();
   }
@@ -657,7 +679,20 @@
 
     const scores = mode === 'midterm'
       ? currentRoster.map(s => ({ student_id: s.student_id, assignment_score: s.assignment_score, test_score: s.test_score, status }))
-      : currentRoster.map(s => ({ student_id: s.student_id, exam_score: s.exam_score, manual_ca_override: s.manual_ca_override, status }));
+      : currentRoster.map(s => ({ student_id: s.student_id, exam_score: s.exam_score, exam_absent: s.exam_absent === true, manual_ca_override: s.manual_ca_override, status }));
+
+    // Before final submission, warn about students who would be left off the result.
+    if (mode === 'fullterm' && status === 'final') {
+      const missing = currentRoster.filter(needsExam);
+      if (missing.length > 0) {
+        const names = missing.slice(0, 5).map(m => m.name).join(', ') + (missing.length > 5 ? ` and ${missing.length - 5} more` : '');
+        const goOn = confirm(
+          `${missing.length} student${missing.length === 1 ? ' has' : 's have'} a CA score but no exam score, and ${missing.length === 1 ? "isn't" : "aren't"} marked Absent:\n\n${names}\n\n` +
+          `This subject will be left off their result. Tick Absent if they missed the exam.\n\nSubmit anyway?`
+        );
+        if (!goOn) return;
+      }
+    }
 
     try {
       const res = await fetch(`${API_BASE}/api/teacher/${endpoint}`, {

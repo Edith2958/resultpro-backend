@@ -261,7 +261,7 @@ router.get('/result', async (req, res) => {
     const scoresRes = await pool.query(
       `SELECT sub.id AS subject_id, sub.name AS subject_name,
               m.assignment_score, m.test_score,
-              r.exam_score, r.manual_ca_override
+              r.exam_score, r.exam_absent, r.manual_ca_override
        FROM results r
        JOIN subjects sub ON sub.id = r.subject_id
        LEFT JOIN mid_term_results m
@@ -277,10 +277,10 @@ router.get('/result', async (req, res) => {
           ? Number(row.assignment_score || 0) + Number(row.test_score || 0)
           : null;
       const ca = midTermTotal !== null ? midTermTotal : Number(row.manual_ca_override || 0);
-      const exam = Number(row.exam_score || 0);
+      const exam = Number(row.exam_score || 0); // absent counts as 0
       const total = ca + exam;
       const { grade, remark } = getGrade(total);
-      return { subject_id: row.subject_id, subject_name: row.subject_name, ca, exam, total, grade, remark };
+      return { subject_id: row.subject_id, subject_name: row.subject_name, ca, exam, absent: row.exam_absent === true, total, grade, remark };
     });
 
     const totalScore = subjects.reduce((sum, s) => sum + s.total, 0);
