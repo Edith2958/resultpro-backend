@@ -280,7 +280,7 @@
   @media print {
     body { background: #fff; padding: 0; }
     .wrap { max-width: 100%; }
-    #loginView, #loadingView, #emptyState, button { display: none !important; }
+    #loginView, #loadingView, #emptyState, #pinUsage, button { display: none !important; }
     .card { border: none; padding: 0; }
   }
 </style>
@@ -392,6 +392,8 @@
       <img id="qrImage" alt="QR code to verify this result" style="width:110px; height:110px;" />
       <p style="font-size:11px; color:var(--text-soft); margin:4px 0 0;">Scan to confirm this result is genuine</p>
     </div>
+
+    <p id="pinUsage" style="display:none; text-align:center; font-size:12px; font-weight:700; color:var(--text-soft); margin:12px 0 4px;"></p>
 
     <div style="display:flex; gap:8px;">
       <button class="secondary" onclick="window.print()" style="flex:1;">Print / Save as PDF</button>
@@ -625,6 +627,18 @@
     } else {
       qrBlock.style.display = 'none';
     }
+
+    const pinUsageEl = document.getElementById('pinUsage');
+    if (data.pin_usage) {
+      const { used, max } = data.pin_usage;
+      pinUsageEl.textContent = used >= max
+        ? `PIN usage: ${used} of ${max} used — that was your last check. You'll need a new PIN to view this again.`
+        : `PIN usage: ${used} of ${max} used.`;
+      pinUsageEl.style.color = used >= max ? 'var(--fail)' : 'var(--text-soft)';
+      pinUsageEl.style.display = 'block';
+    } else {
+      pinUsageEl.style.display = 'none';
+    }
   }
 
   function renderMidTermResult(data) {
@@ -679,6 +693,7 @@
 
     document.getElementById('commentsBlock').innerHTML = '';
     document.getElementById('qrBlock').style.display = 'none';
+    document.getElementById('pinUsage').style.display = 'none';
   }
 
   function backToLogin() {

@@ -354,6 +354,8 @@ router.get('/result', async (req, res) => {
         principal: principalComment,
       },
       verification,
+      // How many times this PIN has been used, counting this check (e.g. 1 of 5).
+      pin_usage: { used: pinUpdateRes.rows[0].uses_count, max: pinUpdateRes.rows[0].max_uses },
     });
   } catch (err) {
     console.error(err);
