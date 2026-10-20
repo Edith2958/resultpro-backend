@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
+const { loginWith, hashPassword, passwordProblem } = require('../utils/passwords');
 const crypto = require('crypto');
 
 /**
  * POST /api/developer/login
- * NOTE: plain-text password compare for now. Swap for bcrypt before real deployment.
+ * Email + password, checked against the scrambled (bcrypt) password stored for that account.
  * body: { email, password }
  */
 router.post('/login', async (req, res) => {
@@ -14,14 +15,11 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'email and password are required' });
   }
   try {
-    const { rows } = await pool.query(
-      `SELECT id, name, email FROM developer_admins WHERE email = $1 AND password_hash = $2`,
-      [email, password]
-    );
-    if (rows.length === 0) {
+    const person = await loginWith('developer_admins', email, password);
+    if (!person) {
       return res.status(401).json({ error: 'Incorrect email or password' });
     }
-    res.json({ admin: rows[0] });
+    res.json({ admin: person });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed' });

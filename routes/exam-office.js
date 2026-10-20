@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
+const { loginWith, hashPassword, passwordProblem } = require('../utils/passwords');
 const multer = require('multer');
 const XLSX = require('xlsx');
 
@@ -9,8 +10,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 
 /**
  * POST /api/exam-office/login
- * NOTE: plain-text password compare for now, same as teacher login. Swap for
- * bcrypt before real deployment.
+ * Email + password, checked against the scrambled (bcrypt) password stored for that account.
  * body: { email, password }
  */
 router.post('/login', async (req, res) => {
@@ -19,14 +19,11 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'email and password are required' });
   }
   try {
-    const { rows } = await pool.query(
-      `SELECT id, name, email FROM exam_officers WHERE email = $1 AND password_hash = $2`,
-      [email, password]
-    );
-    if (rows.length === 0) {
+    const person = await loginWith('exam_officers', email, password);
+    if (!person) {
       return res.status(401).json({ error: 'Incorrect email or password' });
     }
-    res.json({ officer: rows[0] });
+    res.json({ officer: person });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed' });
@@ -457,16 +454,41 @@ router.post('/teachers', async (req, res) => {
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'name, email and password are required' });
   }
+  const problem = passwordProblem(password);
+  if (problem) return res.status(400).json({ error: problem });
   try {
     const { rows } = await pool.query(
       'INSERT INTO teachers (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email',
-      [name.trim(), email.trim(), password]
+      [name.trim(), email.trim(), await hashPassword(password)]
     );
     res.json({ teacher: rows[0] });
   } catch (err) {
     if (err.code === '23505') return res.status(400).json({ error: 'A teacher with that email already exists' });
     console.error(err);
     res.status(500).json({ error: 'Failed to add teacher' });
+  }
+});
+
+/**
+ * POST /api/exam-office/teachers/:id/reset-password
+ * Sets a new password for a teacher who has forgotten theirs. Passwords are scrambled in the
+ * database, so nobody can look the old one up — resetting is the only way.
+ * body: { password }
+ */
+router.post('/teachers/:id/reset-password', async (req, res) => {
+  const { password } = req.body;
+  const problem = passwordProblem(password);
+  if (problem) return res.status(400).json({ error: problem });
+  try {
+    const { rowCount } = await pool.query(
+      'UPDATE teachers SET password_hash = $1 WHERE id = $2',
+      [await hashPassword(password), req.params.id]
+    );
+    if (rowCount === 0) return res.status(404).json({ error: 'Teacher not found' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

@@ -1,13 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
+const { loginWith, hashPassword, passwordProblem } = require('../utils/passwords');
 const { getGrade, getMidTermRemark } = require('../utils/grading');
 
 /**
  * POST /api/teacher/login
- * Simple v1 check: email + password match against the teachers table.
- * NOTE: passwords are compared as plain text for now (matches how they were seeded).
- * Swap this for a proper hashed-password check (bcrypt) before real deployment.
+ * Email + password, checked against the scrambled (bcrypt) password stored for that account.
  * body: { email, password }
  */
 router.post('/login', async (req, res) => {
@@ -15,16 +14,12 @@ router.post('/login', async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: 'email and password are required' });
   }
-
   try {
-    const { rows } = await pool.query(
-      `SELECT id, name, email FROM teachers WHERE email = $1 AND password_hash = $2`,
-      [email, password]
-    );
-    if (rows.length === 0) {
+    const person = await loginWith('teachers', email, password);
+    if (!person) {
       return res.status(401).json({ error: 'Incorrect email or password' });
     }
-    res.json({ teacher: rows[0] });
+    res.json({ teacher: person });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed' });

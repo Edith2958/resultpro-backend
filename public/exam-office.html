@@ -299,7 +299,7 @@
       <div class="add-form cols-4">
         <div><label>Full name</label><input type="text" id="newTeacherName" placeholder="e.g. Mr. Okoro" /></div>
         <div><label>Email</label><input type="email" id="newTeacherEmail" placeholder="e.g. okoro@school.com" /></div>
-        <div><label>Password</label><input type="text" id="newTeacherPassword" placeholder="temporary password" /></div>
+        <div><label>Password</label><input type="text" id="newTeacherPassword" placeholder="password (min 8 characters)" /></div>
         <button class="primary" onclick="addTeacher()">Add teacher</button>
       </div>
       <div id="teachersList"></div>
@@ -739,6 +739,25 @@
   }
 
   /* ---------------- TEACHERS ---------------- */
+  // Passwords are scrambled in the database, so a forgotten one can't be looked up —
+  // the exam office sets a new one and tells the teacher.
+  async function resetTeacherPassword(id) {
+    const t = cache.teachers.find((x) => x.id === id);
+    const password = prompt(`New password for ${t ? t.name : 'this teacher'} (at least 8 characters):`);
+    if (password === null) return; // cancelled
+    try {
+      const res = await fetch(`${API_BASE}/api/exam-office/teachers/${id}/reset-password`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast('Password changed. Give the teacher the new password.');
+    } catch (err) {
+      showToast(err.message || 'Could not reset the password.');
+    }
+  }
+
   async function loadTeachers() {
     try {
       const res = await fetch(`${API_BASE}/api/exam-office/teachers`);
@@ -749,7 +768,10 @@
         ? cache.teachers.map(t => `
           <div class="list-row">
             <span>${t.name} <span class="meta">(${t.email})</span></span>
-            <button class="delete-btn" onclick="deleteItem('teachers', ${t.id}, loadTeachers)">Delete</button>
+            <span>
+              <button class="small" onclick="resetTeacherPassword(${t.id})">Reset password</button>
+              <button class="delete-btn" onclick="deleteItem('teachers', ${t.id}, loadTeachers)">Delete</button>
+            </span>
           </div>`).join('')
         : `<p class="empty-note">No teachers yet.</p>`;
     } catch (err) {
